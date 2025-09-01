@@ -1,6 +1,7 @@
 "use client";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { Card, CardBody, Button, Input, Badge } from "@/components/ui";
 
 export default function StudentJoinPage() {
   const router = useRouter();
@@ -17,29 +18,28 @@ export default function StudentJoinPage() {
   }
 
   return (
-    <section className="max-w-sm space-y-4">
-      <h2 className="text-2xl font-semibold">Join a session</h2>
-      <label className="block text-sm">
-        Your nickname
-        <input
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder="e.g. Alex"
-          className="mt-1 w-full rounded-md border px-3 py-2"
-        />
-      </label>
-      <label className="block text-sm">
-        Session code
-        <input
-          value={code}
-          onChange={(e) => setCode(e.target.value.toUpperCase())}
-          placeholder="e.g. 39KQ"
-          className="mt-1 w-full rounded-md border px-3 py-2"
-        />
-      </label>
-      <button onClick={join} className="rounded-md bg-black px-4 py-2 text-white">
-        Join
-      </button>
-    </section>
+    <div className="mx-auto max-w-md">
+      <Card>
+        <CardBody>
+          <div className="mb-2 flex items-center justify-between">
+            <h2 className="text-xl font-semibold">Join a session</h2>
+            <Badge>Step 1</Badge>
+          </div>
+          <div className="space-y-4">
+            <div>
+              <label className="text-sm text-gray-700">Your nickname</label>
+              <Input placeholder="e.g. Alex" value={name} onChange={(e) => setName(e.target.value)} />
+            </div>
+            <div>
+              <label className="text-sm text-gray-700">Session code</label>
+              <Input placeholder="e.g. 39KQ" value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} />
+            </div>
+            <div className="flex justify-end">
+              <Button onClick={join}>Join</Button>
+            </div>
+          </div>
+        </CardBody>
+      </Card>
+    </div>
   );
 }

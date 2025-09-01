@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { Container } from "@/components/ui";
 
 export const metadata: Metadata = {
   title: "Classroom MCQ (MVP)",
@@ -9,21 +10,26 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body className="min-h-screen bg-gray-50 text-gray-900">
-        <div className="mx-auto max-w-5xl p-6">
-          <header className="mb-6 flex items-center justify-between">
-            <h1 className="text-xl font-semibold">Classroom MCQ</h1>
-            <nav className="flex gap-4 text-sm">
-              <a className="hover:underline" href="/">Home</a>
-              <a className="hover:underline" href="/lecturer">Lecturer</a>
-              <a className="hover:underline" href="/student">Student</a>
-            </nav>
-          </header>
-          <main>{children}</main>
-          <footer className="mt-12 border-t pt-6 text-xs text-gray-500">
-            MVP demo — no real backend wired yet
-          </footer>
-        </div>
+      <body className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-100 text-gray-900">
+        <header className="border-b bg-white/70 backdrop-blur">
+          <Container>
+            <div className="flex h-14 items-center justify-between">
+              <a href="/" className="font-semibold">Classroom MCQ</a>
+              <nav className="flex gap-4 text-sm">
+                <a className="text-gray-600 hover:text-gray-900" href="/lecturer">Lecturer</a>
+                <a className="text-gray-600 hover:text-gray-900" href="/student">Student</a>
+              </nav>
+            </div>
+          </Container>
+        </header>
+
+        <main className="py-8">
+          <Container>{children}</Container>
+        </main>
+
+        <footer className="border-t bg-white/70 py-6 text-xs text-gray-500 backdrop-blur">
+          <Container>MVP demo — no backend wired yet</Container>
+        </footer>
       </body>
     </html>
   );
