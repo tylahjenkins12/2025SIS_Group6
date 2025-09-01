@@ -1,0 +1,42 @@
+----------------------------------------
+General rules for the entire project
+----------------------------------------
+IDE and editor files
+.vscode/
+.idea/
+
+Local environment variables and sensitive files
+.env
+.env.*
+secrets/
+
+----------------------------------------
+Backend (Python) specific rules
+----------------------------------------
+Python virtual environments
+venv/
+.venv/
+env/
+.env/
+
+Python bytecode
+pycache/
+*.pyc
+*.pyo
+*.pyd
+
+----------------------------------------
+Frontend (Next.js) specific rules
+----------------------------------------
+Node.js dependencies
+node_modules/
+
+Next.js build output directories
+.next/
+out/
+
+Vercel build output
+.vercel/
+
+Other temporary and cache files
+.swc/

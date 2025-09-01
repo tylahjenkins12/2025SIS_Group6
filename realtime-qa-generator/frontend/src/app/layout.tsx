@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
+import Link from 'next/link'
 import "./globals.css";
 import { Container } from "@/components/ui";
 
 export const metadata: Metadata = {
-  title: "Classroom MCQ (MVP)",
+  title: "Qwiz Master (MVP)",
   description: "Live lecture quiz MVP",
 };
 
