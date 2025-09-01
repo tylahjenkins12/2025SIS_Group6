@@ -1,25 +1,38 @@
+import { Card, CardBody, Button } from "@/components/ui";
+
 export default function HomePage() {
   return (
-    <section className="space-y-4">
-      <h2 className="text-2xl font-semibold">Welcome 👋</h2>
-      <p>This is the starter UI for your lecture quiz MVP.</p>
-      <ul className="list-disc pl-6">
-        <li>Lecturer can start a session and (later) upload slides.</li>
-        <li>Students join with a 6-digit code and answer MCQs.</li>
-      </ul>
-      <div className="mt-6 flex gap-3">
-        <a
-          href="/lecturer"
-          className="rounded-md bg-black px-4 py-2 text-white"
-        >
-          I’m a lecturer
-        </a>
-        <a
-          href="/student"
-          className="rounded-md border px-4 py-2"
-        >
-          I’m a student
-        </a>
+    <section className="min-h-screen bg-blue-100 py-12">
+      <div className="grid gap-6 md:grid-cols-2 max-w-5xl mx-auto">
+        <Card>
+          <CardBody>
+            <h2 className="text-xl font-semibold">Lecturer</h2>
+            <p className="mt-2 text-sm text-gray-600">
+              Start a live session and publish questions.
+            </p>
+            <div className="mt-4">
+              <Button as-child>
+                {/* @ts-ignore */}
+                <a href="/lecturer">I’m a lecturer</a>
+              </Button>
+            </div>
+          </CardBody>
+        </Card>
+
+        <Card>
+          <CardBody>
+            <h2 className="text-xl font-semibold">Student</h2>
+            <p className="mt-2 text-sm text-gray-600">
+              Join with a code and answer MCQs.
+            </p>
+            <div className="mt-4">
+              <Button variant="secondary" as-child>
+                {/* @ts-ignore */}
+                <a href="/student">I’m a student</a>
+              </Button>
+            </div>
+          </CardBody>
+        </Card>
       </div>
     </section>
   );
