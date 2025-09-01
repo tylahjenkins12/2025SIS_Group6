@@ -1,0 +1,17 @@
+# Python virtual environments
+venv/
+.venv/
+env/
+.env/
+
+# Python bytecode
+pycache/
+*.pyc
+
+# IDE and editor files
+.vscode/
+.idea/
+
+# Local environment variables and sensitive files
+.env
+secrets/
