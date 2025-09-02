@@ -1,6 +1,3 @@
-# TODO: ADD FRONTEND CONTAINER DEPLOYMENT 
-
-
 # BACKEND CONTAINER DEPLOYMENT 
 # Use a slim Python image for the final, lightweight server
 FROM python:3.11-slim
@@ -11,12 +8,12 @@ WORKDIR /usr/src/app
 
 # Copy the requirements file first and install dependencies
 # This is a good practice to leverage Docker's build cache
-COPY ./backend/requirements.txt .
+# We are already in the 'backend' folder via the --source flag
+COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Now, copy only the `app` directory, which contains your application code
-# This ensures that the Python module path (`app.main:app`) is correct
-COPY ./backend/app ./app
+COPY app ./app
 
 # Expose the port that the application will run on
 EXPOSE 8080

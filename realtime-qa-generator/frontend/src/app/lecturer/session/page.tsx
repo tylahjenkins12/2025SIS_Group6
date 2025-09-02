@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import type { MCQ, LeaderboardRow, PublicMCQ, BusEvent, RoundResults } from "@/types";
 import { bus } from "@/lib/bus";
@@ -28,7 +28,7 @@ const SPEED_BONUS_MAX = 400;       // scale remaining time into bonus (0..400)
 
 type Answer = { student: string; optionId: string; respondedAtMs: number };
 
-export default function LecturerSessionPage() {
+function LecturerSessionContent() {
   const params = useSearchParams();
   const router = useRouter();
   const code = params.get("code") ?? "";
@@ -227,5 +227,13 @@ export default function LecturerSessionPage() {
         <Button variant="secondary" className="w-full" onClick={endSession}>End session</Button>
       </div>
     </div>
+  );
+}
+
+export default function LecturerSessionPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <LecturerSessionContent />
+    </Suspense>
   );
 }

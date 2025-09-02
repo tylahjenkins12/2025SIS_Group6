@@ -1,55 +1,170 @@
-### Qwiz-app
-This repository contains all the code for the Qwiz App, a project developed for the Software Innovation Studio subject at The University of Technology Sydney (UTS).
+# Qwiz App
 
-## Key Features
-- **Real-time Transcription:** Uses AI to convert live audio from the lecturer into text.
-- **AI-Powered Question Generation:** Generates relevant multiple-choice questions from the lecture content.
-- **Live Quizzing:** Students can join a session with a unique ID and answer questions as they are generated.
-- **Live Leaderboard:** Tracks and displays student scores in real-time.
-- **Lecturer Analytics:** Provides lecturers with a live view of student performance to identify areas needing clarification.
-- **Ephemeral Sessions:** Session data is not stored after the session ends to protect student privacy.
+Real-time AI-powered quiz application for interactive lectures. Students join sessions with unique codes and answer AI-generated questions while lecturers monitor engagement through live analytics.
+
+## Overview
+
+Qwiz App enhances lecture engagement by automatically generating quiz questions from live content using AI. The system provides real-time feedback to both students and lecturers, creating an interactive learning environment.
+
+## Features
+
+- **Live Quiz Sessions**: Students join with unique codes, answer MCQs in real-time
+- **AI Question Generation**: Auto-generate questions from lecture transcripts using Gemini AI
+- **Real-time Leaderboard**: Live scoring and competitive rankings
+- **Lecturer Dashboard**: Session management and student performance analytics
+- **WebSocket Communication**: Real-time data sync across all participants
+- **Ephemeral Sessions**: Privacy-focused with no persistent student data
+
+## Tech Stack
+
+- **Backend**: FastAPI (Python) with Firestore database
+- **Frontend**: Next.js 15 with TypeScript and Tailwind CSS
+- **AI**: Google Gemini API for question generation
+- **Deployment**: Google Cloud Run with Docker containers
+- **Real-time**: WebSocket connections for live updates
+
+## Architecture
+
+```
+┌─────────────┐    WebSocket    ┌─────────────┐    Firestore    ┌─────────────┐
+│   Frontend  │◄───────────────►│   Backend   │◄───────────────►│  Database   │
+│  (Next.js)  │                 │  (FastAPI)  │                 │ (Firestore) │
+└─────────────┘                 └─────────────┘                 └─────────────┘
+                                        │
+                                        ▼
+                                ┌─────────────┐
+                                │  Gemini AI  │
+                                │    (API)    │
+                                └─────────────┘
+```
 
 ## Project Structure
-This repository is organized into two main parts: the backend and the frontend.
 
-**backend/:** Contains the FastAPI application, which handles all server-side logic, AI integration, and communication with Firestore. The README.md in this directory provides specific instructions for setting up the backend environment.
+```
+├── backend/              # FastAPI Python server
+│   ├── app/             # Application code
+│   ├── Dockerfile       # Backend container
+│   └── requirements.txt # Python dependencies
+├── frontend/            # Next.js React app  
+│   ├── src/            # Source code
+│   ├── Dockerfile      # Frontend container
+│   └── package.json    # Node dependencies
+├── docker-compose.yml  # Local development
+└── README.md          # This file
+```
 
-**frontend/:** Contains the web application code (HTML, CSS, JavaScript) that provides the user interface for both students and lecturers. The README.md in this directory provides instructions for running and building the frontend.
+## Quick Start
 
-**Dockerfile:** A single Dockerfile is used to build a container image that packages both the backend and frontend for seamless deployment to Cloud Run.
+### Prerequisites
+- Docker & Docker Compose
+- Google Cloud CLI (for deployment)
+- Node.js 18+ (for local frontend development)
+- Python 3.8+ (for local backend development)
 
-**LICENSE:** Details the licensing information for this project.
+### Run with Docker Compose
+```bash
+docker-compose up --build
+```
+- Frontend: http://localhost:3000
+- Backend API: http://localhost:8080
 
-## Getting Started
-To get started with local development, you will need to set up both the backend and the frontend environments.
+### Individual Development
+```bash
+# Backend
+cd backend && pip install -r requirements.txt
+cp .env.example .env  # Configure environment variables
+uvicorn app.main:app --reload --port 8080
 
-### Backend Setup:
-Navigate to the backend/ directory and follow the instructions in its README.md to install dependencies and configure Firestore authentication.
+# Frontend  
+cd frontend && npm install && npm run dev
+```
 
-# Follow the instructions in backend/README.md
-`cd backend/`
+## Environment Setup
 
-### Frontend Setup:
-Navigate to the frontend/ directory and follow the instructions in its README.md to run the client-side application.
+### Backend Environment (.env)
+```bash
+cd backend
+cp .env.example .env
+```
 
-# Follow the instructions in frontend/README.md
-`cd frontend/`
+Required variables:
+```env
+GOOGLE_CLOUD_PROJECT="your-project-id"
+GEMINI_API_KEY="your-gemini-api-key"
+GOOGLE_APPLICATION_CREDENTIALS="./secrets/firestore-key.json"
+```
 
-## Running the Full Application:
-Once both the backend and frontend are running locally, you can connect them to test the full application flow. The frontend will be configured to point to your local backend API endpoints (e.g., http://localhost:8080).
+### Firestore Authentication
+```bash
+# Create secrets directory
+mkdir backend/secrets
+
+# Download service account key
+gcloud secrets versions access latest \
+  --secret="LECTURE-QUIZ-FIRESTORE-KEY" \
+  --format="json" > ./backend/secrets/firestore-key.json
+```
 
 ## Deployment
-This application is designed to be deployed to Google Cloud's Cloud Run. The Dockerfile handles the entire build process. Deployment is managed by the gcloud CLI.
 
-## How to Deploy:
-From the root of the repository, use the following command to build and deploy the application.
-```
-gcloud run deploy realtime-qa-generator \
+**⚠️ Important**: Deploy backend first, then frontend (frontend depends on backend URL)
+
+### 1. Deploy Backend to Cloud Run
+```bash
+cd backend
+gcloud run deploy qwiz-backend \
   --source . \
   --platform managed \
   --region us-central1 \
-  --allow-unauthenticated
+  --allow-unauthenticated \
+  --set-env-vars GOOGLE_CLOUD_PROJECT="your-project",GEMINI_API_KEY="your-key"
 ```
 
+### 2. Deploy Frontend to Cloud Run  
+```bash
+cd frontend
+gcloud run deploy qwiz-frontend \
+  --source . \
+  --platform managed \
+  --region us-central1 \
+  --allow-unauthenticated \
+  --set-env-vars QWIZ_API_BACKEND_URL="https://qwiz-backend-xxx.run.app"
+```
+
+### Docker Individual Containers
+```bash
+# Build images
+docker build -t qwiz-backend ./backend
+docker build -t qwiz-frontend ./frontend
+
+# Deploy to your container platform
+```
+
+## Testing
+
+### Backend API Testing
+```bash
+# Health check
+curl http://localhost:8080/
+
+# Create session
+curl -X POST http://localhost:8080/start-session
+
+# WebSocket testing with wscat
+wscat -c ws://localhost:8080/ws/lecturer/{session-id}
+wscat -c ws://localhost:8080/ws/student/{session-id}
+```
+
+### Frontend Testing
+- Navigate to http://localhost:3000
+- Test lecturer flow: `/lecturer` → create session → manage questions
+- Test student flow: `/student` → join with code → answer questions
+
+## Development
+
+- **Backend**: See `backend/README.md` for FastAPI setup and API documentation
+- **Frontend**: See `frontend/README.md` for Next.js development and component structure
+
 ## License
-This project is licensed under the MIT License - see the `LICENSE` file for details.
+
+MIT - see LICENSE file

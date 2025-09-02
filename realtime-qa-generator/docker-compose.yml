@@ -1,0 +1,13 @@
+services:
+  backend:
+    build: ./backend  # Points to the backend's Dockerfile
+    ports:
+      - "8080:8080"
+  frontend:
+    build: ./frontend # Points to the frontend's Dockerfile
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend    # Ensure the backend service is started first
+    environment:
+      - QWIZ_API_BACKEND_URL=https://qwiz-backend-303494497673.us-central1.run.app

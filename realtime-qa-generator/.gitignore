@@ -1,0 +1,20 @@
+# Environment variables (sensitive data)
+.env
+.env.*
+
+# Python backend
+__pycache__/
+*.pyc
+venv/
+.venv/
+
+# Node.js frontend
+node_modules/
+.next/
+
+# IDE files
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
