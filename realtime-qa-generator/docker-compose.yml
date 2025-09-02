@@ -3,6 +3,9 @@ services:
     build: ./backend  # Points to the backend's Dockerfile
     ports:
       - "8080:8080"
+    environment:
+      - GOOGLE_CLOUD_PROJECT=${GOOGLE_CLOUD_PROJECT}
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
   frontend:
     build: ./frontend # Points to the frontend's Dockerfile
     ports:
@@ -10,4 +13,4 @@ services:
     depends_on:
       - backend    # Ensure the backend service is started first
     environment:
-      - QWIZ_API_BACKEND_URL=https://qwiz-backend-303494497673.us-central1.run.app
+      - QWIZ_API_BACKEND_URL=${QWIZ_API_BACKEND_URL}

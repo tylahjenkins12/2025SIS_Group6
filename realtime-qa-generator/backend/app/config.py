@@ -4,8 +4,8 @@ import os
 from pathlib import Path
 from pydantic_settings import BaseSettings
 
-# Define the absolute path to the .env file in the backend/ directory
-BASE_DIR = Path(__file__).resolve().parent.parent
+# Define the absolute path to the .env file in the realtime-qa-generator/ directory
+BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
 class Settings(BaseSettings):
     GEMINI_API_KEY: str
