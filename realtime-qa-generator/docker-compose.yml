@@ -6,7 +6,7 @@ services:
     env_file:
       - .env
     volumes:
-      - ~/.config/gcloud:/root/.config/gcloud
+      - ${HOST_GCLOUD_PATH}:${CONTAINER_GCLOUD_PATH}
   frontend:
     build: ./frontend
     ports:
