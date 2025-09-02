@@ -7,8 +7,8 @@ import { Card, CardBody } from "@/components/ui";
 import { ColumnChart } from "@/components/Chart";
 
 export default function StudentPlayPage() {
-  const code = useMemo(() => sessionStorage.getItem("mvp_code") ?? "", []);
-  const name = useMemo(() => sessionStorage.getItem("mvp_name") ?? "Anon", []);
+  const code = useMemo(() => typeof window !== 'undefined' ? sessionStorage.getItem("mvp_code") ?? "" : "", []);
+  const name = useMemo(() => typeof window !== 'undefined' ? sessionStorage.getItem("mvp_name") ?? "Anon" : "Anon", []);
 
   const [current, setCurrent] = useState<PublicMCQ | null>(null);
   const [picked, setPicked] = useState<string | null>(null);
