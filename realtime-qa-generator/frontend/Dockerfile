@@ -1,41 +1,25 @@
-# Build stage
-FROM node:18 AS builder
+FROM node:18-alpine
+
 WORKDIR /app
 
 # Copy package files
-COPY package.json ./
-COPY package-lock.json ./
+COPY package*.json ./
 
-# Install all dependencies (including devDependencies for build)
+# Install ALL dependencies (including dev) for building
 RUN npm ci
 
-# Copy source code
+# Copy application files
 COPY . .
 
 # Build the application
 RUN npm run build
 
-# Production stage
-FROM node:18-alpine AS runner
-WORKDIR /app
-
+# Set environment variables
 ENV NODE_ENV=production
-
-# Install production dependencies only
-COPY package.json package-lock.json ./
-RUN npm ci --only=production && npm cache clean --force
-
-# Copy built application from builder
-COPY --from=builder /app/.next/standalone ./
-COPY --from=builder /app/.next/static ./.next/static
-
-# Copy public folder if it exists
-COPY --from=builder /app/public ./public
-
-# Cloud Run expects PORT environment variable
-EXPOSE 3000
 ENV PORT=3000
-ENV HOSTNAME="0.0.0.0"
+ENV HOSTNAME=0.0.0.0
 
-# Start the application
+EXPOSE 3000
+
+# Start the custom server
 CMD ["node", "server.js"]
