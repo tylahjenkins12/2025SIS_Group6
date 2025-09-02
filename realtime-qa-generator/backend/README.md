@@ -1,6 +1,6 @@
-# Realtime QA Generator Backend
+# Qwiz App Backend
 
-This is the backend for the Realtime QA Generator, a web application designed to enhance student engagement during lectures. The backend is built with FastAPI and leverages Google Cloud's Firestore and Gemini AI for real-time question generation and data management.
+This is the backend for the Qwiz App, a web application designed to enhance student engagement during lectures. The backend is built with FastAPI and leverages Google Cloud's Firestore and Gemini AI for real-time question generation and data management.
 
 ### Project Structure
 

@@ -1,42 +1,20 @@
-----------------------------------------
-General rules for the entire project
-----------------------------------------
-IDE and editor files
+# Environment variables (sensitive data)
+.env
+.env.*
+
+# Python backend
+__pycache__/
+*.pyc
+venv/
+.venv/
+
+# Node.js frontend
+node_modules/
+.next/
+
+# IDE files
 .vscode/
 .idea/
 
-Local environment variables and sensitive files
-.env
-.env.*
-secrets/
-
-----------------------------------------
-Backend (Python) specific rules
-----------------------------------------
-Python virtual environments
-venv/
-.venv/
-env/
-.env/
-
-Python bytecode
-pycache/
-*.pyc
-*.pyo
-*.pyd
-
-----------------------------------------
-Frontend (Next.js) specific rules
-----------------------------------------
-Node.js dependencies
-node_modules/
-
-Next.js build output directories
-.next/
-out/
-
-Vercel build output
-.vercel/
-
-Other temporary and cache files
-.swc/
+# OS files
+.DS_Store
