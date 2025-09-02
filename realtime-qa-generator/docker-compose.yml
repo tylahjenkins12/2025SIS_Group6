@@ -1,16 +1,17 @@
 services:
   backend:
-    build: ./backend  # Points to the backend's Dockerfile
+    build: ./backend
     ports:
       - "8080:8080"
-    environment:
-      - GOOGLE_CLOUD_PROJECT=${GOOGLE_CLOUD_PROJECT}
-      - GEMINI_API_KEY=${GEMINI_API_KEY}
+    env_file:
+      - .env
+    volumes:
+      - ~/.config/gcloud:/root/.config/gcloud
   frontend:
-    build: ./frontend # Points to the frontend's Dockerfile
+    build: ./frontend
     ports:
       - "3000:3000"
     depends_on:
-      - backend    # Ensure the backend service is started first
-    environment:
-      - QWIZ_API_BACKEND_URL=${QWIZ_API_BACKEND_URL}
+      - backend
+    env_file:
+      - .env
