@@ -3,10 +3,11 @@ FROM node:18 AS builder
 WORKDIR /app
 
 # Copy package files
-COPY package*.json ./
+COPY package.json ./
+COPY package-lock.json ./
 
-# Install dependencies
-RUN npm ci --only=production
+# Install all dependencies (including devDependencies for build)
+RUN npm ci
 
 # Copy source code
 COPY . .
@@ -20,10 +21,15 @@ WORKDIR /app
 
 ENV NODE_ENV=production
 
-# Copy necessary files from builder
-COPY --from=builder /app/package*.json ./
+# Install production dependencies only
+COPY package.json package-lock.json ./
+RUN npm ci --only=production && npm cache clean --force
+
+# Copy built application from builder
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
+
+# Copy public folder if it exists
 COPY --from=builder /app/public ./public
 
 # Cloud Run expects PORT environment variable
