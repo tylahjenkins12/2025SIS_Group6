@@ -1,7 +1,11 @@
+// app/layout.tsx
 import type { Metadata } from "next";
-import Link from 'next/link'
 import "./globals.css";
+import { Inter } from "next/font/google";
 import { Container } from "@/components/ui";
+import { ToastProvider } from "@/components/Toast"; // 👈 import our provider
+
+const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 
 export const metadata: Metadata = {
   title: "Qwiz Master (MVP)",
@@ -11,26 +15,20 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-100 text-gray-900">
-        <header className="border-b bg-white/70 backdrop-blur">
-          <Container>
-            <div className="flex h-14 items-center justify-between">
-              <a href="/" className="font-semibold">Classroom MCQ</a>
-              <nav className="flex gap-4 text-sm">
-                <a className="text-gray-600 hover:text-gray-900" href="/lecturer">Lecturer</a>
-                <a className="text-gray-600 hover:text-gray-900" href="/student">Student</a>
-              </nav>
-            </div>
-          </Container>
-        </header>
+      {/* Body gradient is sitewide; sections can still add their own full-bleed backgrounds */}
+      <body
+        className={`${inter.variable} min-h-screen bg-[linear-gradient(180deg,#f6f9ff,#ffffff)] text-slate-900 antialiased`}
+      >
+        {/* Provide toast context to the entire app */}
+        <ToastProvider>
+          {/* Full-width main so page sections can be edge-to-edge */}
+          <main className="min-h-screen">{children}</main>
 
-        <main className="py-8">
-          <Container>{children}</Container>
-        </main>
-
-        <footer className="border-t bg-white/70 py-6 text-xs text-gray-500 backdrop-blur">
-          <Container>MVP demo — no backend wired yet</Container>
-        </footer>
+          {/* Optional lightweight footer */}
+          <footer className="border-t border-slate-100 bg-white/70 py-6 text-xs text-slate-600 backdrop-blur">
+            <Container>MVP demo — no backend wired yet</Container>
+          </footer>
+        </ToastProvider>
       </body>
     </html>
   );
