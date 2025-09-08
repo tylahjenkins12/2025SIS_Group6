@@ -33,7 +33,7 @@ def _startup_event():
 # A simple endpoint to confirm the server is running.
 @app.get("/")
 async def root():
-    return {"message": "QA Generator Backend is running"}
+    return {"status": "The Qwiz App backend is running"}
 
 # --- Uvicorn Server Setup ---
 # The entry point for running the application locally.

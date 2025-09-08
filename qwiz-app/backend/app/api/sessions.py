@@ -10,7 +10,7 @@ from fastapi import APIRouter, HTTPException, WebSocket, WebSocketDisconnect
 # Note: The import below assumes that db and session_manager are accessible this way.
 from app.dependencies import db, session_manager, analytics_service
 # from app.config import settings # You would need this import if using the settings object directly
-from app.schemas import FirestoreQuestion, StudentAnswer
+from app.schemas import SessionCreate, FirestoreQuestion, StudentAnswer
 from app.services import generate_question_with_llm
 
 
