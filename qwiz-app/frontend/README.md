@@ -1,224 +1,174 @@
-# 🎨 Qwiz Frontend
+# Qwiz App Frontend
 
-React-based user interface for the Qwiz real-time quiz platform, built with Next.js and TypeScript.
+Interactive real-time quiz application frontend built with Next.js for the Software Innovation Studio project at UTS.
 
-## 🚀 Quick Start
+## 🎯 Overview
 
-```bash
-# Install dependencies
-npm install
+The frontend provides an intuitive interface for both lecturers and students to participate in live quiz sessions. Lecturers can create and manage quiz sessions, while students can join sessions and answer questions in real-time with live scoring.
 
-# Development server (http://localhost:3000)
-npm run dev
-
-# Production build
-npm run build
-npm start
-```
+### Key Features
+- **Real-time Quiz Interface**: Live question display with countdown timers
+- **Student Participation**: Join sessions with unique codes, answer MCQs
+- **Lecturer Dashboard**: Manage quiz questions and monitor student responses
+- **Live Leaderboard**: Real-time score tracking and rankings
+- **Results Visualization**: Interactive charts showing answer distributions
+- **Cross-tab Synchronization**: Events sync across multiple browser tabs
 
 ## 🏗️ Architecture
 
 ### Tech Stack
-- **Framework:** Next.js 15 (App Router)
-- **Language:** TypeScript
-- **Styling:** Tailwind CSS
-- **Real-time:** Event Bus with BroadcastChannel API
-- **API Client:** Fetch API with WebSocket support
+- **Framework**: Next.js 15 with App Router
+- **Language**: TypeScript
+- **Styling**: Tailwind CSS 3
+- **State Management**: React hooks + local event bus
+- **Real-time Communication**: BroadcastChannel API / localStorage fallback
+- **Build**: Standalone output for Docker deployment
 
 ### Project Structure
 ```
 src/
-├── app/                    # Next.js pages
+├── app/                    # Next.js App Router pages
 │   ├── lecturer/          # Lecturer interface
-│   │   ├── page.tsx       # Dashboard
-│   │   └── session/       # Active session management
-│   ├── student/           # Student interface  
-│   │   ├── page.tsx       # Join page
-│   │   └── play/          # Quiz participation
-│   └── layout.tsx         # Root layout
-├── components/            
-│   ├── ui/                # Base components (Card, Button, Input)
-│   └── Chart.tsx          # Results visualization
+│   │   ├── page.tsx      # Session creation
+│   │   └── session/      # Session management
+│   ├── student/          # Student interface  
+│   │   ├── page.tsx     # Session joining
+│   │   └── play/        # Quiz participation
+│   ├── layout.tsx       # Root layout
+│   └── globals.css      # Global styles
+├── components/          # Reusable UI components
+│   ├── Chart.tsx       # Data visualization
+│   └── ui.tsx          # UI primitives
 ├── lib/
-│   ├── api.ts             # Backend API client
-│   └── bus.ts             # Cross-tab event system
-└── types.ts               # Shared TypeScript definitions
+│   └── bus.ts          # Event bus for real-time communication
+└── types.ts            # TypeScript definitions
 ```
 
-## 👥 User Flows
+### Event System
+The app uses a custom event bus (`bus.ts`) for real-time communication:
+- **BroadcastChannel**: Primary communication method
+- **localStorage**: Fallback for cross-tab sync
+- **Event Types**: MCQ publishing, answer submission, leaderboard updates
 
-### 👨‍🏫 Lecturer Flow
+## 🚀 Development
 
-1. **Session Creation** (`/lecturer`)
-   - Calls `POST /api/sessions/create`
-   - Receives unique session code
-   - Redirects to session management
+### Prerequisites
+- Node.js 18+
+- npm/yarn/pnpm
 
-2. **Session Management** (`/lecturer/session`)
-   - WebSocket connection to `/ws/lecturer/{sessionId}`
-   - Upload lecture content → `POST /api/questions/generate`
-   - Publish questions → `POST /api/questions/publish`
-   - Real-time student count via WebSocket events
-   - Live response tracking and charts
+### Getting Started
 
-3. **Results Display**
-   - Automatic chart updates as responses arrive
-   - Answer distribution visualization
-   - Export results → `GET /api/sessions/{id}/results`
+1. **Install dependencies**
+   ```bash
+   npm install
+   ```
 
-### 🧑‍🎓 Student Flow
+2. **Run development server**
+   ```bash
+   npm run dev
+   ```
+   
+3. **Open application**
+   - Navigate to [http://localhost:3000](http://localhost:3000)
+   - Lecturer interface: `/lecturer`
+   - Student interface: `/student`
 
-1. **Join Session** (`/student`)
-   - Enter code → `POST /api/sessions/join`
-   - Validates session exists and is active
-   - Stores student info in session storage
-
-2. **Quiz Participation** (`/student/play`)
-   - WebSocket connection to `/ws/student/{sessionId}`
-   - Receives questions via `question-published` events
-   - Submit answers → `POST /api/answers/submit`
-   - Real-time leaderboard updates
-   - Auto-advance to next question
-
-## 🔌 API Integration
-
-### Configuration
-```typescript
-// lib/api.ts
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
-const WS_URL = API_URL.replace(/^http/, 'ws');
-```
-
-### Key API Calls
-```typescript
-// Create session
-const session = await api.post('/sessions/create', { lecturerId });
-
-// Join session
-const student = await api.post('/sessions/join', { code, name });
-
-// Generate questions from content
-const questions = await api.post('/questions/generate', { 
-  sessionId, 
-  content 
-});
-
-// Submit answer
-await api.post('/answers/submit', { 
-  questionId, 
-  studentId, 
-  answer 
-});
-```
-
-### WebSocket Events
-```typescript
-// Lecturer events
-ws.on('student-joined', (data) => updateStudentCount());
-ws.on('answer-submitted', (data) => updateChart());
-
-// Student events  
-ws.on('question-published', (question) => displayQuestion());
-ws.on('question-ended', (results) => showResults());
-ws.on('leaderboard-update', (scores) => updateLeaderboard());
-```
-
-## 🎯 Components
-
-### Event Bus System
-Synchronizes state across browser tabs for same user:
-```typescript
-import bus from '@/lib/bus';
-
-// Lecturer publishes question
-bus.emit('question-published', questionData);
-
-// All lecturer tabs receive update
-bus.on('question-published', (data) => {
-  setCurrentQuestion(data);
-});
-```
-
-### UI Components
-```tsx
-// Reusable primitives
-<Card>
-  <CardBody>
-    <Button onClick={publishQuestion}>
-      Publish Question
-    </Button>
-  </CardBody>
-</Card>
-
-// Chart for results
-<Chart 
-  data={responses}
-  correctAnswer={question.correct}
-  showPercentages
-/>
-```
-
-## 🎨 Styling Guidelines
-
-- **Color Scheme:** Blue primary, gray secondary
-- **Responsive:** Mobile-first with `md:` and `lg:` breakpoints  
-- **Layout:** Max width containers, consistent spacing
-- **Components:** Card-based design with subtle shadows
-
-## 🔧 Configuration
-
-### Environment Variables
-```env
-NEXT_PUBLIC_API_URL=http://localhost:8080  # Backend URL
-```
-
-### Build Configuration
-- **Output:** Standalone for Docker deployment
-- **TypeScript:** Strict mode disabled for rapid development
-- **ESLint:** Configured with Next.js defaults
-
-## 🐳 Docker Support
-
+### Available Scripts
 ```bash
-# Build and run
+npm run dev      # Start development server
+npm run build    # Build for production
+npm run start    # Start production server
+npm run lint     # Run ESLint
+```
+
+## 📱 User Flows
+
+### Lecturer Workflow
+1. Navigate to `/lecturer` to create a session
+2. Generate unique session code
+3. Go to `/lecturer/session?code=ABC123` to manage session
+4. Publish pre-written MCQ questions
+5. Monitor real-time student responses and leaderboard
+6. View answer distribution charts after each round
+
+### Student Workflow  
+1. Navigate to `/student` to join a session
+2. Enter session code and nickname
+3. Go to `/student/play` for quiz interface
+4. Answer questions within time limits
+5. View live leaderboard and round results
+
+## 🐳 Docker Deployment
+
+### Build & Run
+```bash
+# Build the image
 docker build -t qwiz-frontend .
-docker run -p 3000:3000 \
-  -e NEXT_PUBLIC_API_URL=http://backend:8080 \
-  qwiz-frontend
+
+# Run the container
+docker run -p 3000:3000 qwiz-frontend
 ```
 
-## 🧪 Testing
+### Dockerfile Details
+- **Multi-stage build**: Optimized for production
+- **Standalone output**: Self-contained Next.js server
+- **Alpine runner**: Minimal production image
+- **Port 3000**: Default Next.js port
 
-```bash
-# Unit tests (Jest + React Testing Library)
-npm test
+## 🔧 Configuration Files
 
-# E2E tests (Playwright) 
-npm run test:e2e
-```
+- **`next.config.ts`**: Next.js configuration with standalone output
+- **`tailwind.config.js`**: Tailwind CSS customization
+- **`tsconfig.json`**: TypeScript compiler settings
+- **`postcss.config.mjs`**: PostCSS processing for Tailwind
+- **`eslint.config.mjs`**: Code linting rules
 
-## 📊 State Management
+## 🔗 Integration with Backend
 
-- **Session State:** React Context for global session data
-- **Local State:** useState for component-specific data
-- **Persistence:** sessionStorage for student info
-- **Real-time:** WebSocket + Event Bus for live updates
+The frontend currently operates in isolation with:
+- **Mock Data**: Sample MCQ questions in `/lecturer/session`
+- **Local Event Bus**: In-memory cross-tab communication
+- **Session Storage**: Temporary storage for session codes/names
 
-## 🚦 Error Handling
+### Backend Connection Points
+When integrating with the backend:
+- Replace mock data with API calls to FastAPI backend
+- Update event bus to use WebSocket/Server-Sent Events
+- Add environment variables for API endpoints
+- Implement proper error handling for network requests
 
-- Network errors display toast notifications
-- WebSocket reconnection with exponential backoff
-- Form validation before API calls
-- Loading states during async operations
+## 🎨 Styling & UI
 
-## 📱 Progressive Enhancement
+### Design System
+- **Tailwind CSS**: Utility-first styling
+- **Custom Variables**: CSS custom properties for theming
+- **Dark Mode**: Automatic system preference detection
+- **Responsive**: Mobile-first design approach
 
-- Works without JavaScript (SSR pages)
-- Offline fallback for submitted answers
-- Responsive design for all screen sizes
-- Keyboard navigation support
+### Component Library
+- **Cards**: Flexible container components
+- **Buttons**: Various styles and states
+- **Charts**: Interactive data visualization
+- **Badges**: Status and information display
+
+## 🔍 Development Notes
+
+### State Management
+- Uses React hooks for local state
+- Event bus for cross-component communication
+- No external state management library needed
+
+### Performance Optimizations
+- Next.js automatic code splitting
+- Standalone build for minimal Docker image
+- Static generation where applicable
+- Efficient re-renders with proper key props
+
+### Browser Compatibility
+- Modern browsers with BroadcastChannel support
+- Graceful fallback to localStorage for older browsers
+- SSR-safe code with proper hydration
 
 ---
 
-📚 For backend API documentation, see [backend README](../backend/README.md)  
-🔧 For deployment and infrastructure, see [main README](../README.md)
+**Part of the Qwiz App ecosystem** - See main project README for full system overview and deployment instructions.
