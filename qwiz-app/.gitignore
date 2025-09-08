@@ -1,6 +1,5 @@
 # Environment variables (sensitive data)
 .env
-.env.*
 
 # Python backend
 __pycache__/
