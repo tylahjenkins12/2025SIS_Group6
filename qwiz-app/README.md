@@ -64,6 +64,31 @@ qwiz-app/
 - Node.js 18+ (for local frontend development)
 - Python 3.11+ (for local backend development)
 
+
+### Daily Git Workflow 
+
+1. Update local main branch:
+`git fetch origin && git checkout main && git pull origin main`
+
+2. Create/switch to your branch:
+`checkout -b your-feature-name`    # Create new branch
+`git checkout your-feature-name`       # OR switch to existing branch
+
+3. Make changes, then commit:
+`git add .`
+`git commit -m "Descriptive commit message"`
+
+**Switch back and rebase**
+`git rebase main`
+
+**If conflicts occur: resolve in editor, then**
+`git add . && git rebase --continue`
+
+**Force push when complete**
+`git push --force-with-lease origin your-feature-name`
+
+4. Create Pull Request on GitHub
+
 ### Environment Setup
 
 1. **Copy the environment template**:
