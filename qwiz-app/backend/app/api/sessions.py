@@ -4,6 +4,11 @@ import json
 import uuid
 from datetime import datetime, timedelta, timezone
 
+### temporary imports
+import random
+import string
+### end temporary imports
+
 import requests
 from fastapi import APIRouter, HTTPException, WebSocket, WebSocketDisconnect
 
@@ -304,4 +309,12 @@ async def end_session(session_id: str):
 
 @router.get("/api/session_id/get")
 async def get_session_id():
-    return {"message": "Hello from the Get Session ID endpoint"}
+
+    ### temporary code generation functionality (moved from frontend to backend to test connection), to be updated!
+    # Define the characters to choose from (Upper case alphabet + numbers)
+    characters = string.ascii_uppercase + string.digits
+    
+    # Generate a random 4 character code
+    code = ''.join(random.choice(characters) for _ in range(4))
+
+    return {"code": code}
