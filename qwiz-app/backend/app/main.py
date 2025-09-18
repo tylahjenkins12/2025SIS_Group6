@@ -35,6 +35,11 @@ def _startup_event():
 async def root():
     return {"status": "The Qwiz App backend is running"}
 
+# --- Root Endpoints (App Functions) ---
+@app.get("/api/session_id/get")
+async def root():
+    return {"message": "Hello from the Get Session ID endpoint"}
+
 # --- Uvicorn Server Setup ---
 # The entry point for running the application locally.
 if __name__ == "__main__":
