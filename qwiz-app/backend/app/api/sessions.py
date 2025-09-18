@@ -301,3 +301,7 @@ async def end_session(session_id: str):
     except Exception as e:
         print(f"Error ending session: {e}")
         raise HTTPException(status_code=500, detail="Error ending session")
+
+@router.get("/api/session_id/get")
+async def get_session_id():
+    return {"message": "Hello from the Get Session ID endpoint"}
