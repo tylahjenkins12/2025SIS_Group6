@@ -1,22 +1,39 @@
 // Lecturer start page// 
 "use client";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardBody, Button } from "@/components/ui";
 import Link from "next/link";
 import { useToast } from "@/components/Toast";
 
-function makeCode() {
-  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-  let c = "";
-  for (let i = 0; i < 4; i++) c += chars[Math.floor(Math.random() * chars.length)];
-  return c;
-}
+// function makeCode() {
+//   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+//   let c = "";
+//   for (let i = 0; i < 4; i++) c += chars[Math.floor(Math.random() * chars.length)];
+//   return c;
+// }
 
 export default function LecturerStartPage() {
   const router = useRouter();
-  const [code] = useState(makeCode());
+  // const [code] = useState(makeCode());
+  const [code, setCode] = useState("");
   const { showToast } = useToast();
+
+  useEffect(() => {
+    async function getCode() {
+      try {
+        const response = await fetch('http://localhost:8080/api/session_id/get'); 
+        if (!response.ok) {
+          throw new Error('Failed to fetch code');
+        }
+        const data = await response.json();
+        setCode(data.code); // Access the 'code' key from the JSON object sent from the backend
+      } catch (error) {
+        console.error("Error fetching code:", error);
+      }
+    }
+    getCode();
+  }, []);
 
   const handleCopy = async () => {
     try {
