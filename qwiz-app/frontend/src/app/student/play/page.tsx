@@ -1,26 +1,16 @@
 "use client";
 
-import { useEffect, useMemo, useState, useCallback } from "react";
-import { useRouter } from "next/navigation";
-import type { BusEvent, LeaderboardRow, PublicMCQ, RoundResults } from "@/types";
-import { bus } from "@/lib/bus";
-import { Card, CardBody, Button } from "@/components/ui";
 import { ColumnChart } from "@/components/Chart";
+import { Button, Card, CardBody } from "@/components/ui";
+import type { LeaderboardRow, PublicMCQ, RoundResults } from "@/types";
+import { useRouter } from "next/navigation";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 const OVERLAY_MS = 3500;
 
 export default function StudentPlayPage() {
   const router = useRouter();
-
-  const code = useMemo(
-    () => (typeof window !== "undefined" ? sessionStorage.getItem("mvp_code") ?? "" : ""),
-    []
-  );
-  const name = useMemo(
-    () => (typeof window !== "undefined" ? sessionStorage.getItem("mvp_name") ?? "Anon" : "Anon"),
-    []
-  );
-
+  const [code, setCode] = useState("");
   const [current, setCurrent] = useState<PublicMCQ | null>(null);
   const [picked, setPicked] = useState<string | null>(null);
   const [secondsLeft, setSecondsLeft] = useState<number>(0);
@@ -29,53 +19,79 @@ export default function StudentPlayPage() {
   const [top, setTop] = useState<LeaderboardRow[]>([]);
   const [showFullLB, setShowFullLB] = useState(false);
 
-  // helper to close overlay
+  const wsRef = useRef<WebSocket | null>(null);
+
   const hideOverlay = useCallback(() => setShowFullLB(false), []);
+  const name = useMemo(
+    () =>
+      typeof window !== "undefined"
+        ? sessionStorage.getItem("mvp_name") ?? "Anon"
+        : "Anon",
+    []
+  );
 
-  // close overlay on ESC
+  // Load session code from sessionStorage
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") hideOverlay();
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [hideOverlay]);
+    const stored = sessionStorage.getItem("mvp_code");
+    if (stored) setCode(stored);
+  }, []);
 
-  // Subscribe to events
+  // WebSocket setup
   useEffect(() => {
     if (!code) return;
 
-    const off = bus.on((e: BusEvent) => {
-      if (e.type === "mcq_published" && e.code === code) {
-        setCurrent(e.mcq);
-        setPicked(null);
-        setResults(null);
-        setShowFullLB(false);
-        tickCountdown(e.mcq.deadlineMs, e.mcq.roundMs);
-      } else if (e.type === "round_results" && e.code === code) {
-        setResults(e.results);
-        setCurrent(null); // round ended
-        setProgressPct(0);
-        setSecondsLeft(0);
-        // flash overlay for the leaderboard
-        setShowFullLB(true);
-        setTimeout(() => setShowFullLB(false), OVERLAY_MS);
-      } else if (e.type === "leaderboard_update" && e.code === code) {
-        setTop(e.top);
-      } else if (e.type === "session_ended" && e.code === code) {
-        setCurrent(null);
-        setResults(null);
-        setShowFullLB(false);
-        alert("Session ended");
+    const host =
+      process.env.NEXT_PUBLIC_ENV === "docker" ? "0.0.0.0" : "localhost";
+
+    const ws = new WebSocket(`ws://${host}:8080/ws/TEST`);
+    wsRef.current = ws;
+
+    ws.onopen = () => console.log("✅ WebSocket connected!");
+    ws.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+
+        if (data.type === "mcq_published") {
+          setCurrent(data.mcq);
+          setPicked(null);
+          setResults(null);
+          setShowFullLB(false);
+          tickCountdown(data.mcq.deadlineMs, data.mcq.roundMs);
+        }
+
+        if (data.type === "round_results") {
+          setResults(data.results);
+          setCurrent(null);
+          setProgressPct(0);
+          setSecondsLeft(0);
+          setShowFullLB(true);
+          setTimeout(() => setShowFullLB(false), OVERLAY_MS);
+        }
+
+        if (data.type === "leaderboard_update") {
+          setTop(data.top);
+        }
+
+        if (data.type === "session_ended") {
+          setCurrent(null);
+          setResults(null);
+          setShowFullLB(false);
+          alert("Session ended");
+        }
+      } catch (err) {
+        console.error("Error parsing WebSocket message:", err);
       }
-    });
+    };
+
+    ws.onerror = (err) => console.error("⚠️ WebSocket error:", err);
+    ws.onclose = (ev) => console.log("❌ WebSocket disconnected:", ev);
 
     return () => {
-      off();
+      ws.close();
     };
   }, [code]);
 
-  // Countdown ticker with progress bar
+  // Countdown ticker
   function tickCountdown(deadlineMs: number, roundMs: number) {
     const update = () => {
       const remaining = Math.max(0, deadlineMs - Date.now());
@@ -91,22 +107,22 @@ export default function StudentPlayPage() {
     if (!current || picked || secondsLeft <= 0) return;
     setPicked(optionId);
 
-    bus.emit({
-      type: "answer_submitted",
-      code,
-      student: name,
-      mcqId: current.mcqId,
-      optionId,
-      respondedAtMs: Date.now(),
-    });
+    wsRef.current?.send(
+      JSON.stringify({
+        type: "answer_submitted",
+        code,
+        student: name,
+        mcqId: current.mcqId,
+        optionId,
+        respondedAtMs: Date.now(),
+      })
+    );
   }
 
   function leaveSession() {
     if (!confirm("Leave this session? You can rejoin with the code.")) return;
-    try {
-      sessionStorage.removeItem("mvp_code");
-      sessionStorage.removeItem("mvp_name");
-    } catch {}
+    sessionStorage.removeItem("mvp_code");
+    sessionStorage.removeItem("mvp_name");
     router.push("/student");
   }
 
@@ -127,7 +143,11 @@ export default function StudentPlayPage() {
       >
         <div className="flex items-center justify-between">
           <h2 className="text-xl font-semibold">🏆 Leaderboard</h2>
-          <Button variant="ghost" onClick={hideOverlay} aria-label="Close leaderboard">
+          <Button
+            variant="ghost"
+            onClick={hideOverlay}
+            aria-label="Close leaderboard"
+          >
             Close
           </Button>
         </div>
@@ -145,7 +165,9 @@ export default function StudentPlayPage() {
                 >
                   <span className="truncate">
                     <span className="mr-2 text-gray-500">#{i + 1}</span>
-                    <b className={t.name === name ? "text-indigo-700" : ""}>{t.name}</b>
+                    <b className={t.name === name ? "text-indigo-700" : ""}>
+                      {t.name}
+                    </b>
                   </span>
                   <span className="font-medium">{t.score}</span>
                 </li>
@@ -197,9 +219,12 @@ export default function StudentPlayPage() {
           {!current && !results && (
             <Card>
               <CardBody>
-                <h3 className="text-lg font-semibold">🎤 Waiting for the next question…</h3>
+                <h3 className="text-lg font-semibold">
+                  🎤 Waiting for the next question…
+                </h3>
                 <p className="mt-1 text-sm text-slate-600">
-                  Hang tight—your lecturer will release a question soon. Keep this tab open.
+                  Hang tight—your lecturer will release a question soon. Keep
+                  this tab open.
                 </p>
               </CardBody>
             </Card>
@@ -238,8 +263,12 @@ export default function StudentPlayPage() {
                           className={[
                             "w-full rounded-xl border px-4 py-3 text-left shadow-sm transition",
                             "hover:bg-indigo-50 focus:outline-none focus:ring-2 focus:ring-indigo-300",
-                            !!picked || secondsLeft <= 0 ? "cursor-not-allowed opacity-95" : "",
-                            isPicked ? "border-indigo-300 bg-indigo-50" : "border-gray-300 bg-white/90",
+                            !!picked || secondsLeft <= 0
+                              ? "cursor-not-allowed opacity-95"
+                              : "",
+                            isPicked
+                              ? "border-indigo-300 bg-indigo-50"
+                              : "border-gray-300 bg-white/90",
                           ].join(" ")}
                         >
                           {o.text}
@@ -250,7 +279,9 @@ export default function StudentPlayPage() {
                 </ul>
 
                 {picked && (
-                  <p className="mt-3 text-sm text-gray-600">Answer locked in ✅</p>
+                  <p className="mt-3 text-sm text-gray-600">
+                    Answer locked in ✅
+                  </p>
                 )}
               </CardBody>
             </Card>
@@ -290,8 +321,7 @@ export default function StudentPlayPage() {
                 {/* Personal feedback */}
                 {picked && (
                   <p className="mt-3 text-sm">
-                    Your answer:{" "}
-                    <b>{picked.toUpperCase()}</b>{" "}
+                    Your answer: <b>{picked.toUpperCase()}</b>{" "}
                     {picked === results.correctOptionId ? (
                       <span className="text-green-600">✅ Correct</span>
                     ) : (
@@ -329,7 +359,9 @@ export default function StudentPlayPage() {
                   >
                     <span className="truncate">
                       <span className="mr-2 text-gray-500">#{i + 1}</span>
-                      <b className={t.name === name ? "text-indigo-700" : ""}>{t.name}</b>
+                      <b className={t.name === name ? "text-indigo-700" : ""}>
+                        {t.name}
+                      </b>
                     </span>
                     <span className="font-medium">{t.score}</span>
                   </li>

@@ -221,6 +221,35 @@ async def websocket_endpoint(websocket: WebSocket, client_type: str, session_id:
         if client_type == "student":
             await analytics_service.track_student_leave(session_id, student_id)
 
+@router.websocket("/ws/TEST")
+async def websocket_test(ws: WebSocket):
+    await ws.accept()
+    print(f"Student connected to session TEST")
+
+    # Send a test question
+    await ws.send_json({
+        "type": "mcq_published",
+        "mcq": {
+            "mcqId": "test1",
+            "question": "What is 2 + 2?",
+            "options": [
+                {"id": "a", "text": "1"},
+                {"id": "b", "text": "2"},
+                {"id": "c", "text": "3"},
+                {"id": "d", "text": "4"}
+            ],
+            "correctOptionId": "d",
+            "deadlineMs": int(datetime.now(timezone.utc).timestamp() * 1000) + 15000,
+            "roundMs": 15000
+        }
+    })
+
+    while True:
+        msg = await ws.receive_text()
+        print("Received from student:", msg)
+
+
+
 @router.get("/sessions/{session_id}/analytics")
 async def get_session_analytics(session_id: str):
     """
