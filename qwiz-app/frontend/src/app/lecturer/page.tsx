@@ -22,12 +22,35 @@ export default function LecturerStartPage() {
   useEffect(() => {
     async function getCode() {
       try {
-        const response = await fetch('http://localhost:8080/api/session_id/get'); 
+        ////// version 1 of getting code (code generated in backend)
+        // const response = await fetch('http://localhost:8080/api/session_id/get');
+
+        ////// version 2 of getting code (create a session + return the data)
+        const response = await fetch('http://localhost:8080/start-session', {
+          method: 'POST', // declare as a post method
+          headers: {
+            'Content-Type': 'application/json', // declares data in the body being sent through as a JSON object
+          },
+          body: JSON.stringify({
+            // Add the data the backend expects here - temporarily hardcoded
+            lecturer_name: "Test Lecturer",
+            course_name: "Test Course",
+            question_interval_seconds: 300,
+            answer_time_seconds: 60,
+          }),
+        }); 
+
         if (!response.ok) {
           throw new Error('Failed to fetch code');
         }
         const data = await response.json();
-        setCode(data.code); // Access the 'code' key from the JSON object sent from the backend
+
+        ////// version 1 of getting code from response data
+        // setCode(data.code); // Access the 'code' key from the returned JSON object as code
+
+        ////// version 2 of getting code from response data
+        setCode(data.sessionId); // Access the 'sessionID' key from the returned JSON object as code
+
       } catch (error) {
         console.error("Error fetching code:", error);
       }
