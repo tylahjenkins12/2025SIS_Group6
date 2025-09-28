@@ -7,6 +7,7 @@ import { bus } from "@/lib/bus";
 import { Card, CardBody, Button, Badge } from "@/components/ui";
 import { ColumnChart } from "@/components/Chart";
 import { MicCapture } from "@/components/MicCapture";
+import { useBackendWS } from "@/lib/usebackendWS";
 
 // Sample draft(s)
 const SAMPLE_DRAFTS: MCQ[] = [
@@ -50,6 +51,39 @@ function LecturerSessionContent() {
   // 🔴 live transcript (mic)
   const [transcript, setTranscript] = useState<string>("");
 
+  // Session configuration
+  const [sessionConfig, setSessionConfig] = useState<{
+    transcriptionIntervalMs?: number;
+    questionInterval?: number;
+    answerTime?: number;
+  }>({});
+
+  // WebSocket connection
+  const { send: sendWS, ready: wsReady } = useBackendWS(code, "lecturer");
+
+  // Fetch session configuration from URL params
+  useEffect(() => {
+    const sessionId = params.get("sessionId");
+    const fallbackCode = params.get("code");
+
+    if (sessionId) {
+      // If we have sessionId, this session was created properly with config
+      // TODO: In a full implementation, fetch session config from backend using sessionId
+      setSessionConfig({
+        transcriptionIntervalMs: 10000, // Will be fetched from backend
+        questionInterval: 30,
+        answerTime: 30
+      });
+    } else if (fallbackCode) {
+      // Legacy support for direct code access
+      setSessionConfig({
+        transcriptionIntervalMs: 10000, // Default
+        questionInterval: 30,
+        answerTime: 30
+      });
+    }
+  }, [params]);
+
   // Timer tick
   useEffect(() => {
     if (!round.ticking) return;
@@ -86,16 +120,28 @@ function LecturerSessionContent() {
 
   const codeLabel = useMemo(() => code || "N/A", [code]);
 
-  // Mic transcript handler (append + broadcast chunk for future features)
+  // Mic transcript handler - sends transcript chunks via WebSocket
   const onTranscript = useCallback(
     (chunk: string) => {
       const clean = chunk.trim();
       if (!clean) return;
+
+      // Update local transcript display
       setTranscript((t) => (t ? t + " " + clean : clean));
-      // Broadcast so other parts (e.g., auto-question generator) can listen
+
+      // Send transcript chunk to backend via WebSocket
+      if (sendWS && wsReady) {
+        sendWS({
+          type: "transcript_chunk",
+          chunk: clean,
+          timestamp: new Date().toISOString()
+        });
+      }
+
+      // Broadcast locally for any other listeners
       bus.emit({ type: "transcript_chunk", code, text: clean, at: Date.now() } as any);
     },
-    [code]
+    [code, sendWS, wsReady]
   );
 
   const publish = useCallback(
@@ -209,8 +255,11 @@ function LecturerSessionContent() {
           <Badge>Code: {codeLabel}</Badge>
           <Button variant="ghost" onClick={copyCode}>Copy</Button>
 
-          {/* 🎙 Mic capture (browser STT for MVP; switch to mode="server" when /api/stt is wired) */}
-          <MicCapture mode="browser" onTranscript={onTranscript} />
+          {/* 🎙 Mic capture with interval-based transcription */}
+          <MicCapture
+            onTranscript={onTranscript}
+            transcriptionIntervalMs={sessionConfig.transcriptionIntervalMs || 10000}
+          />
 
           <Button onClick={startNextDraft} disabled={round.ticking || drafts.length === 0}>
             ▶ Start round
@@ -317,6 +366,22 @@ function LecturerSessionContent() {
               </CardBody>
             </Card>
           )}
+
+          {/* Transcription Status */}
+          <Card>
+            <CardBody>
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold">🎤 Transcription System</h3>
+                <Badge variant={wsReady ? "default" : "secondary"}>
+                  {wsReady ? "🟢 Connected" : "🔴 Disconnected"}
+                </Badge>
+              </div>
+              <div className="mt-2 space-y-2 text-sm">
+                <p><strong>Interval:</strong> {(sessionConfig.transcriptionIntervalMs || 10000) / 1000}s chunks</p>
+                <p><strong>WebSocket:</strong> {wsReady ? "Ready for transcript chunks" : "Connecting..."}</p>
+              </div>
+            </CardBody>
+          </Card>
 
           {/* 🗣️ Live transcript preview (optional) */}
           {transcript && (

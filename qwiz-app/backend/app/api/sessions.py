@@ -2,6 +2,8 @@
 import asyncio
 import json
 import uuid
+import random
+import string
 from datetime import datetime, timedelta, timezone
 
 ### temporary imports
@@ -27,8 +29,12 @@ last_transcript_time = {}
 session_start_times = {}
 
 # Default constants (will be overridden by session configuration)
-GENERATION_INTERVAL = 30 
+GENERATION_INTERVAL = 30
 MIN_TRANSCRIPT_LENGTH = 150
+
+def generate_short_session_code() -> str:
+    """Generate a short 6-character session code (alphanumeric, uppercase)."""
+    return ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
 
 async def generate_and_save_question(session_id: str):
     """
@@ -63,9 +69,20 @@ async def start_session(session_data: SessionCreate):
     """
     Creates a new session with lecturer configuration.
     """
-    # Create a new document in the 'sessions' collection
-    session_ref = db.collection('sessions').document()
-    session_id = session_ref.id
+    # Generate a short session code instead of using UUID
+    session_code = generate_short_session_code()
+
+    # Ensure the session code is unique (check Firestore)
+    max_attempts = 10
+    for attempt in range(max_attempts):
+        session_ref = db.collection('sessions').document(session_code)
+        if not session_ref.get().exists:
+            break
+        session_code = generate_short_session_code()
+        if attempt == max_attempts - 1:
+            raise HTTPException(status_code=500, detail="Could not generate unique session code")
+
+    session_id = session_code
     session_start_time = datetime.now(timezone.utc)
 
     try:
@@ -76,6 +93,7 @@ async def start_session(session_data: SessionCreate):
             "courseName": session_data.course_name,
             "questionIntervalSeconds": session_data.question_interval_seconds,
             "answerTimeSeconds": session_data.answer_time_seconds,
+            "transcriptionIntervalSeconds": session_data.transcription_interval_seconds,
             "status": "active",
             "lecturerTranscript": "",
         })
@@ -96,7 +114,8 @@ async def start_session(session_data: SessionCreate):
             "lecturerName": session_data.lecturer_name,
             "courseName": session_data.course_name,
             "questionInterval": session_data.question_interval_seconds,
-            "answerTime": session_data.answer_time_seconds
+            "answerTime": session_data.answer_time_seconds,
+            "transcriptionInterval": session_data.transcription_interval_seconds
         }
 
     except Exception as e:
@@ -129,23 +148,26 @@ async def websocket_endpoint(websocket: WebSocket, client_type: str, session_id:
     try:
         # A simple background task that runs continuously to check for new questions
         async def automatic_generation_loop():
-            # Get session configuration for intervals
-            session_doc = session_ref.get()
-            if not session_doc.exists:
-                return
-            session_data = session_doc.to_dict()
-            question_interval = session_data.get('questionIntervalSeconds', GENERATION_INTERVAL)
-            
             while True:
+                # Get fresh session configuration for intervals
+                session_doc = session_ref.get()
+                if not session_doc.exists:
+                    break
+
+                session_data = session_doc.to_dict()
+                question_interval = session_data.get('questionIntervalSeconds', GENERATION_INTERVAL)
+                transcription_interval = session_data.get('transcriptionIntervalSeconds', 10)
+
                 # Calculate time since last chunk
                 time_diff = (datetime.now(timezone.utc) - last_transcript_time.get(session_id, datetime.now(timezone.utc))).total_seconds()
-                
+
                 # Check if it's time to generate a question and there's enough transcript
+                # Use transcription interval as a buffer to ensure we have recent content
                 if time_diff >= question_interval and temp_transcripts.get(session_id) and len(temp_transcripts.get(session_id, "")) >= MIN_TRANSCRIPT_LENGTH:
                     await generate_and_save_question(session_id)
-                
-                # Wait for a bit before checking again
-                await asyncio.sleep(5)
+
+                # Wait for a bit before checking again (use transcription interval / 2 for responsiveness)
+                await asyncio.sleep(max(5, transcription_interval // 2))
         
         # Start the loop as a background task
         if client_type == "lecturer":
@@ -161,9 +183,19 @@ async def websocket_endpoint(websocket: WebSocket, client_type: str, session_id:
                 if message_type == "transcript_chunk":
                     # Append the transcript chunk and update the last timestamp
                     transcript_chunk = message.get("chunk", "")
-                    temp_transcripts[session_id] += transcript_chunk
+                    timestamp = message.get("timestamp", "")
+
+                    temp_transcripts[session_id] += transcript_chunk + " "
                     last_transcript_time[session_id] = datetime.now(timezone.utc)
-                    print(f"Transcript chunk received: {transcript_chunk}")
+
+                    print(f"Transcript chunk received at {timestamp}: {transcript_chunk}")
+
+                    # Optional: Send acknowledgment to frontend
+                    await websocket.send_json({
+                        "type": "transcript_received",
+                        "chunk_length": len(transcript_chunk),
+                        "timestamp": timestamp
+                    })
                     
             elif client_type == "student":
                 if message_type == "answer_submission":

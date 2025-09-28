@@ -30,6 +30,7 @@ class SessionCreate(BaseModel):
     course_name: str
     question_interval_seconds: int = Field(ge=10, le=300)  # 10 seconds to 5 minutes
     answer_time_seconds: int = Field(ge=5, le=120)  # 5 seconds to 2 minutes
+    transcription_interval_seconds: int = Field(ge=5, le=60, default=10)  # 5 seconds to 1 minute, default 10s
     
 # Model for the full Question object that will be stored in Firestore.
 # This includes the fields managed by the backend.

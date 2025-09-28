@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import path from "path";
 
 const nextConfig: NextConfig = {
   // Disables the ESLint check during the build process.
@@ -14,6 +15,12 @@ const nextConfig: NextConfig = {
   },
 
   output: 'standalone',
+
+  // Fix the workspace root warning by explicitly setting the output file tracing root
+  // to the current frontend directory instead of searching parent directories
+  experimental: {
+    outputFileTracingRoot: path.join(__dirname),
+  },
 };
 
 export default nextConfig;

@@ -168,7 +168,8 @@ gcloud run deploy qwiz-backend \
   --platform managed \
   --region us-central1 \
   --allow-unauthenticated \
-  --env-vars-file ../.env
+  --set-secrets=GEMINI_API_KEY=GEMINI_API_KEY:latest \
+  --env-vars-file ../env.yaml
 ```
 
 ### 2. Deploy Frontend to Cloud Run  
@@ -181,6 +182,7 @@ gcloud run deploy qwiz-frontend \
   --region us-central1 \
   --allow-unauthenticated \
   --port 3000
+  --env-vars-file ../env.yaml
 ```
 
 ### Docker Individual Containers

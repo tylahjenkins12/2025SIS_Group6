@@ -24,6 +24,9 @@ export default function HomePage() {
             <a href="#features" className="hover:text-slate-900">
               Features
             </a>
+            <Link href="/test-connection" className="hover:text-slate-900">
+              🔧 Test Backend
+            </Link>
             <a href="#privacy" className="hover:text-slate-900">
               Privacy
             </a>
@@ -47,6 +50,9 @@ export default function HomePage() {
               <a href="#features" className="block px-4 py-2 text-sm hover:bg-slate-50">
                 Features
               </a>
+              <Link href="/test-connection" className="block px-4 py-2 text-sm hover:bg-slate-50">
+                🔧 Test Backend
+              </Link>
               <a href="#privacy" className="block px-4 py-2 text-sm hover:bg-slate-50">
                 Privacy
               </a>
