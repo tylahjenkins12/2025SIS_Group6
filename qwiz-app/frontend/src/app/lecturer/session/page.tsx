@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState, Suspense, useCallback } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import type { MCQ, LeaderboardRow, PublicMCQ, BusEvent, RoundResults } from "@/types";
-import { bus } from "@/lib/bus";
+import { useBus } from "@/lib/useBus";
 import { Card, CardBody, Button, Badge } from "@/components/ui";
 import { ColumnChart } from "@/components/Chart";
 import { MicCapture } from "@/components/MicCapture";
@@ -35,6 +35,9 @@ function LecturerSessionContent() {
   const router = useRouter();
   const code = params.get("code") ?? "";
 
+  // WebSocket-backed bus for this lecturer/session
+  const bus = useBus({ sessionId: code, role: "lecturer", name: "lecturer" });
+
   const [drafts, setDrafts] = useState<MCQ[]>(SAMPLE_DRAFTS);
   const [published, setPublished] = useState<MCQ[]>([]);
   const [top, setTop] = useState<LeaderboardRow[]>([]);
@@ -57,10 +60,11 @@ function LecturerSessionContent() {
     return () => clearInterval(id);
   }, [round.ticking]);
 
-  // Subscribe to bus
+  // Subscribe to bus (answers + server-published results)
   useEffect(() => {
     if (!code) return;
     const off = bus.on((e: BusEvent) => {
+      // Student answers stream in live
       if (e.type === "answer_submitted" && e.code === code && round.mcq && e.mcqId === round.mcq.mcqId) {
         setRound((r) => {
           if (!r.mcq) return r;
@@ -75,14 +79,17 @@ function LecturerSessionContent() {
           };
         });
       }
+      // If backend emits authoritative round_results, display them
       if (e.type === "round_results" && e.code === code) {
         setLastResults(e.results);
       }
+      // If backend emits leaderboard updates, reflect them
+      if (e.type === "leaderboard_update" && e.code === code) {
+        setTop(e.top);
+      }
     });
-    return () => {
-      off();
-    };
-  }, [code, round.mcq, round.deadlineMs]);
+    return () => off();
+  }, [code, bus, round.mcq, round.deadlineMs]);
 
   const codeLabel = useMemo(() => code || "N/A", [code]);
 
@@ -95,7 +102,7 @@ function LecturerSessionContent() {
       // Broadcast so other parts (e.g., auto-question generator) can listen
       bus.emit({ type: "transcript_chunk", code, text: clean, at: Date.now() } as any);
     },
-    [code]
+    [code, bus]
   );
 
   const publish = useCallback(
@@ -118,7 +125,7 @@ function LecturerSessionContent() {
       bus.emit({ type: "mcq_published", code, mcq: publicMcq });
       setTimeout(finishRound, ROUND_MS + 50);
     },
-    [code]
+    [code, bus]
   );
 
   function finishRound() {
@@ -126,12 +133,14 @@ function LecturerSessionContent() {
       if (!r.mcq) return r;
       const correct = r.mcq.correctOptionId;
 
+      // counts per option
       const countsMap = new Map<string, number>();
       r.mcq.options.forEach((o) => countsMap.set(o.id, 0));
       r.answers.forEach((a) => countsMap.set(a.optionId, (countsMap.get(a.optionId) || 0) + 1));
       const counts = r.mcq.options.map((o) => ({ optionId: o.id, count: countsMap.get(o.id) || 0 }));
 
-      const byStudent = new Map<string, number>();
+      // per-student delta for this round
+      const byStudentDelta = new Map<string, number>();
       r.answers.forEach((a) => {
         const isCorrect = a.optionId === correct;
         let delta = 0;
@@ -140,30 +149,32 @@ function LecturerSessionContent() {
           const bonus = Math.round((remaining / ROUND_MS) * SPEED_BONUS_MAX);
           delta = BASE_SCORE + bonus;
         }
-        byStudent.set(a.student, (byStudent.get(a.student) || 0) + delta);
+        byStudentDelta.set(a.student, (byStudentDelta.get(a.student) || 0) + delta);
       });
 
-      setTop((prev) => {
-        const next = new Map<string, number>(prev.map((x) => [x.name, x.score]));
-        for (const [name, delta] of byStudent.entries()) {
-          next.set(name, (next.get(name) || 0) + delta);
-        }
-        const sorted = Array.from(next.entries())
-          .map(([name, score]) => ({ name, score }))
-          .sort((a, b) => b.score - a.score)
-          .slice(0, 10);
-        bus.emit({ type: "leaderboard_update", code, top: sorted });
-        return sorted;
-      });
+      // compute new leaderboard from existing top + deltas
+      const nextTotals = new Map<string, number>(top.map((x) => [x.name, x.score]));
+      for (const [name, delta] of byStudentDelta.entries()) {
+        nextTotals.set(name, (nextTotals.get(name) || 0) + delta);
+      }
+      const sorted: LeaderboardRow[] = Array.from(nextTotals.entries())
+        .map(([name, score]) => ({ name, score }))
+        .sort((a, b) => b.score - a.score)
+        .slice(0, 10);
 
-      const results = {
+      // broadcast updates (client-side for now; later move to server authority)
+      bus.emit({ type: "leaderboard_update", code, top: sorted });
+
+      const results: RoundResults = {
         mcqId: r.mcq.mcqId,
         counts,
         correctOptionId: correct,
-        top: top,
-      } satisfies RoundResults;
+        top: sorted,
+      };
       bus.emit({ type: "round_results", code, results });
 
+      // commit UI state
+      setTop(sorted);
       return { ...r, ticking: false };
     });
   }
@@ -266,7 +277,7 @@ function LecturerSessionContent() {
                 </div>
                 <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-gray-200">
                   <div
-                    className="h-full bg-gradient-to-r from-indigo-500 to-purple-500 transition-[width] duration-1000"
+                    className="h-full bg-gradient-to-r from-indigo-500 to purple-500 transition-[width] duration-1000"
                     style={{ width: `${progressPct}%` }}
                   />
                 </div>
@@ -278,7 +289,7 @@ function LecturerSessionContent() {
             </Card>
           )}
 
-          {/* ✅ Round results (updated formatting) */}
+          {/* ✅ Round results */}
           {lastResults && !round.ticking && (
             <Card>
               <CardBody className="p-5 sm:p-6">
@@ -291,7 +302,6 @@ function LecturerSessionContent() {
                   </span>
                 </div>
 
-                {/* Divider */}
                 <div className="mt-3 h-px w-full bg-gray-200/70" />
 
                 <div className="mt-4 w-full overflow-x-auto">
@@ -318,7 +328,7 @@ function LecturerSessionContent() {
             </Card>
           )}
 
-          {/* 🗣️ Live transcript preview (optional) */}
+          {/* 🗣️ Live transcript preview */}
           {transcript && (
             <Card>
               <CardBody>

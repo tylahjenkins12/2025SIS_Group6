@@ -3,23 +3,31 @@
 import { useEffect, useMemo, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import type { BusEvent, LeaderboardRow, PublicMCQ, RoundResults } from "@/types";
-import { bus } from "@/lib/bus";
+import { useBus } from "@/lib/useBus";
 import { Card, CardBody, Button } from "@/components/ui";
 import { ColumnChart } from "@/components/Chart";
+
 
 const OVERLAY_MS = 3500;
 
 export default function StudentPlayPage() {
   const router = useRouter();
 
-  const code = useMemo(
-    () => (typeof window !== "undefined" ? sessionStorage.getItem("mvp_code") ?? "" : ""),
-    []
-  );
-  const name = useMemo(
-    () => (typeof window !== "undefined" ? sessionStorage.getItem("mvp_name") ?? "Anon" : "Anon"),
-    []
-  );
+  // Read session + name AFTER mount to avoid hydration mismatch
+  const [code, setCode] = useState<string | null>(null);
+  const [name, setName] = useState<string | null>(null);
+  useEffect(() => {
+    try {
+      setCode(sessionStorage.getItem("mvp_code") ?? "");
+      setName(sessionStorage.getItem("mvp_name") ?? "Anon");
+    } catch {
+      setCode("");
+      setName("Anon");
+    }
+  }, []);
+
+  // WS-backed event bus bound to this session + role
+  const bus = useBus({ sessionId: code ?? "", role: "student", name: name ?? "Anon" });
 
   const [current, setCurrent] = useState<PublicMCQ | null>(null);
   const [picked, setPicked] = useState<string | null>(null);
@@ -41,28 +49,30 @@ export default function StudentPlayPage() {
     return () => window.removeEventListener("keydown", onKey);
   }, [hideOverlay]);
 
-  // Subscribe to events
+  // Subscribe to bus (questions, results, leaderboard, session end)
   useEffect(() => {
     if (!code) return;
 
     const off = bus.on((e: BusEvent) => {
-      if (e.type === "mcq_published" && e.code === code) {
+      if (e.code !== code) return;
+
+      if (e.type === "mcq_published") {
         setCurrent(e.mcq);
         setPicked(null);
         setResults(null);
         setShowFullLB(false);
         tickCountdown(e.mcq.deadlineMs, e.mcq.roundMs);
-      } else if (e.type === "round_results" && e.code === code) {
+      } else if (e.type === "round_results") {
         setResults(e.results);
         setCurrent(null); // round ended
         setProgressPct(0);
         setSecondsLeft(0);
         // flash overlay for the leaderboard
         setShowFullLB(true);
-        setTimeout(() => setShowFullLB(false), OVERLAY_MS);
-      } else if (e.type === "leaderboard_update" && e.code === code) {
+        window.setTimeout(() => setShowFullLB(false), OVERLAY_MS);
+      } else if (e.type === "leaderboard_update") {
         setTop(e.top);
-      } else if (e.type === "session_ended" && e.code === code) {
+      } else if (e.type === "session_ended") {
         setCurrent(null);
         setResults(null);
         setShowFullLB(false);
@@ -70,10 +80,8 @@ export default function StudentPlayPage() {
       }
     });
 
-    return () => {
-      off();
-    };
-  }, [code]);
+    return () => off();
+  }, [code, bus]);
 
   // Countdown ticker with progress bar
   function tickCountdown(deadlineMs: number, roundMs: number) {
@@ -81,10 +89,10 @@ export default function StudentPlayPage() {
       const remaining = Math.max(0, deadlineMs - Date.now());
       setSecondsLeft(Math.ceil(remaining / 1000));
       setProgressPct(Math.max(0, Math.min(100, (remaining / roundMs) * 100)));
-      if (remaining <= 0) clearInterval(id);
+      if (remaining <= 0) window.clearInterval(id);
     };
     update();
-    const id = setInterval(update, 250);
+    const id = window.setInterval(update, 250);
   }
 
   function submit(optionId: string) {
@@ -93,8 +101,8 @@ export default function StudentPlayPage() {
 
     bus.emit({
       type: "answer_submitted",
-      code,
-      student: name,
+      code: code!, // non-null after mount
+      student: name ?? "Anon",
       mcqId: current.mcqId,
       optionId,
       respondedAtMs: Date.now(),
@@ -110,8 +118,6 @@ export default function StudentPlayPage() {
     router.push("/student");
   }
 
-  if (!code)
-    return <p className="text-red-700">No session code — go back and join.</p>;
 
   // Fullscreen Leaderboard overlay
   const FullscreenLeaderboard = () => (
@@ -311,7 +317,7 @@ export default function StudentPlayPage() {
           )}
         </div>
 
-        {/* Sidebar: leaderboard only (identity moved to top bar) */}
+        {/* Sidebar: leaderboard */}
         <div className="space-y-6">
           <Card>
             <CardBody>
