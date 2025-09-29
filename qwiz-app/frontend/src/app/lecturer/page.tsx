@@ -6,6 +6,12 @@ import { Card, CardBody, Button } from "@/components/ui";
 import Link from "next/link";
 import { useToast } from "@/components/Toast";
 
+function makeCode() {
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  let c = "";
+  for (let i = 0; i < 4; i++) c += chars[Math.floor(Math.random() * chars.length)];
+  return c;
+}
 
 export default function LecturerStartPage() {
   const router = useRouter();
@@ -15,9 +21,8 @@ export default function LecturerStartPage() {
   const [sessionConfig, setSessionConfig] = useState({
     lecturerName: "",
     courseName: "",
-    questionIntervalSeconds: 30,
     answerTimeSeconds: 30,
-    transcriptionIntervalSeconds: 10
+    transcriptionIntervalMinutes: 5
   });
   const [isCreating, setIsCreating] = useState(false);
 
@@ -84,9 +89,8 @@ export default function LecturerStartPage() {
         body: JSON.stringify({
           lecturer_name: sessionConfig.lecturerName,
           course_name: sessionConfig.courseName,
-          question_interval_seconds: sessionConfig.questionIntervalSeconds,
           answer_time_seconds: sessionConfig.answerTimeSeconds,
-          transcription_interval_seconds: sessionConfig.transcriptionIntervalSeconds
+          transcription_interval_minutes: sessionConfig.transcriptionIntervalMinutes
         })
       });
 
@@ -151,60 +155,55 @@ export default function LecturerStartPage() {
                 </div>
               </div>
 
-              <div className="grid gap-4 sm:grid-cols-3">
+              <div className="grid gap-4 sm:grid-cols-2">
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">
-                    Question Interval (s)
+                    Answer Time
                   </label>
-                  <input
-                    type="number"
-                    min="10"
-                    max="300"
-                    value={sessionConfig.questionIntervalSeconds}
-                    onChange={(e) => setSessionConfig(prev => ({ ...prev, questionIntervalSeconds: parseInt(e.target.value) || 30 }))}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">
-                    Answer Time (s)
-                  </label>
-                  <input
-                    type="number"
-                    min="5"
-                    max="120"
+                  <select
                     value={sessionConfig.answerTimeSeconds}
-                    onChange={(e) => setSessionConfig(prev => ({ ...prev, answerTimeSeconds: parseInt(e.target.value) || 30 }))}
+                    onChange={(e) => setSessionConfig(prev => ({ ...prev, answerTimeSeconds: parseInt(e.target.value) }))}
                     className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  />
+                  >
+                    <option value={20}>20 seconds</option>
+                    <option value={30}>30 seconds</option>
+                    <option value={45}>45 seconds</option>
+                    <option value={60}>1 minute</option>
+                    <option value={90}>1.5 minutes</option>
+                  </select>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">
-                    Transcription Interval (s)
+                    Transcription Interval
                   </label>
-                  <input
-                    type="number"
-                    min="5"
-                    max="60"
-                    value={sessionConfig.transcriptionIntervalSeconds}
-                    onChange={(e) => setSessionConfig(prev => ({ ...prev, transcriptionIntervalSeconds: parseInt(e.target.value) || 10 }))}
+                  <select
+                    value={sessionConfig.transcriptionIntervalMinutes}
+                    onChange={(e) => setSessionConfig(prev => ({ ...prev, transcriptionIntervalMinutes: parseInt(e.target.value) }))}
                     className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  />
+                  >
+                    <option value={5}>5 minutes</option>
+                    <option value={7}>7 minutes</option>
+                    <option value={9}>9 minutes</option>
+                    <option value={12}>12 minutes</option>
+                  </select>
                 </div>
               </div>
             </div>
 
-            {/* Continue + student link */}
-            <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            {/* Action buttons */}
+            <div className="mt-6 flex items-center justify-between">
+              <Link
+                href="/"
+                className="flex items-center gap-2 text-slate-600 hover:text-slate-900 transition-colors"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                </svg>
+                <span className="text-sm font-medium">Back</span>
+              </Link>
               <Button onClick={createSession} disabled={isCreating}>
                 {isCreating ? "Creating..." : "Start session"}
               </Button>
-              <Link
-                href="/student"
-                className="text-sm text-slate-600 hover:text-slate-900"
-              >
-                Students: enter code →
-              </Link>
             </div>
 
             {/* Privacy note */}

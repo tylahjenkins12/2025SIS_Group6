@@ -1,7 +1,7 @@
 # app/schemas.py
 
 import uuid
-from typing import List, Optional
+from typing import List, Optional, Literal
 from datetime import datetime
 from pydantic import BaseModel, Field
 
@@ -23,14 +23,20 @@ class StudentAnswer(BaseModel):
     selected_option: str
     response_time_ms: Optional[int] = None
 
+# Model for lecturer question selection
+class LecturerQuestionSelection(BaseModel):
+    """Validates the data when lecturer selects a question from the 3 options."""
+    session_id: str
+    selected_question_index: int = Field(ge=0, le=2)  # 0, 1, or 2 for the 3 options
+    chunk_id: str  # Identifier for the transcript chunk this question set came from
+
 # Model for creating a new session with lecturer setup
 class SessionCreate(BaseModel):
     """Validates the data to start a new quiz session."""
     lecturer_name: str
     course_name: str
-    question_interval_seconds: int = Field(ge=10, le=300)  # 10 seconds to 5 minutes
-    answer_time_seconds: int = Field(ge=5, le=120)  # 5 seconds to 2 minutes
-    transcription_interval_seconds: int = Field(ge=5, le=60, default=10)  # 5 seconds to 1 minute, default 10s
+    answer_time_seconds: Literal[20, 30, 45, 60, 90] = Field(default=30)  # 20s, 30s, 45s, 1min, 1.5min
+    transcription_interval_minutes: Literal[5, 7, 9, 12] = Field(default=5)  # Fixed intervals: 5, 7, 9, or 12 minutes
     
 # Model for the full Question object that will be stored in Firestore.
 # This includes the fields managed by the backend.

@@ -7,6 +7,7 @@ import { bus } from "@/lib/bus";
 import { Card, CardBody, Button, Badge } from "@/components/ui";
 import { ColumnChart } from "@/components/Chart";
 import { MicCapture } from "@/components/MicCapture";
+import { QuestionSelector } from "@/components/QuestionSelector";
 import { useBackendWS } from "@/lib/usebackendWS";
 
 // Sample draft(s)
@@ -54,12 +55,37 @@ function LecturerSessionContent() {
   // Session configuration
   const [sessionConfig, setSessionConfig] = useState<{
     transcriptionIntervalMs?: number;
-    questionInterval?: number;
     answerTime?: number;
   }>({});
 
+  // Question selection state
+  const [questionOptions, setQuestionOptions] = useState<{
+    questions: Array<{
+      index: number;
+      question_text: string;
+      options: string[];
+      correct_answer: string;
+    }>;
+    chunkId: string;
+    transcriptChunk: string;
+  } | null>(null);
+
+  // WebSocket message handler
+  const handleWebSocketMessage = useCallback((msg: any) => {
+    if (msg.type === "question_options") {
+      setQuestionOptions({
+        questions: msg.questions,
+        chunkId: msg.chunk_id,
+        transcriptChunk: msg.transcript_chunk
+      });
+    } else if (msg.type === "question_selected") {
+      setQuestionOptions(null); // Close the selector
+      // Could show a success toast here
+    }
+  }, []);
+
   // WebSocket connection
-  const { send: sendWS, ready: wsReady } = useBackendWS(code, "lecturer");
+  const { send: sendWS, ready: wsReady } = useBackendWS(code, "lecturer", handleWebSocketMessage);
 
   // Fetch session configuration from URL params
   useEffect(() => {
@@ -70,15 +96,13 @@ function LecturerSessionContent() {
       // If we have sessionId, this session was created properly with config
       // TODO: In a full implementation, fetch session config from backend using sessionId
       setSessionConfig({
-        transcriptionIntervalMs: 10000, // Will be fetched from backend
-        questionInterval: 30,
+        transcriptionIntervalMs: 5 * 60 * 1000, // 5 minutes default (will be fetched from backend)
         answerTime: 30
       });
     } else if (fallbackCode) {
       // Legacy support for direct code access
       setSessionConfig({
-        transcriptionIntervalMs: 10000, // Default
-        questionInterval: 30,
+        transcriptionIntervalMs: 5 * 60 * 1000, // 5 minutes default
         answerTime: 30
       });
     }
@@ -143,6 +167,34 @@ function LecturerSessionContent() {
     },
     [code, sendWS, wsReady]
   );
+
+  // Question selection handlers
+  const handleQuestionSelect = useCallback(async (selectedIndex: number, chunkId: string) => {
+    try {
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_API_BASE || "http://localhost:8080";
+      const response = await fetch(`${backendUrl}/select-question`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          session_id: code,
+          selected_question_index: selectedIndex,
+          chunk_id: chunkId
+        })
+      });
+
+      if (response.ok) {
+        console.log("Question selected successfully");
+      } else {
+        console.error("Failed to select question");
+      }
+    } catch (error) {
+      console.error("Error selecting question:", error);
+    }
+  }, [code]);
+
+  const handleQuestionDismiss = useCallback(() => {
+    setQuestionOptions(null);
+  }, []);
 
   const publish = useCallback(
     (mcq: MCQ) => {
@@ -258,7 +310,7 @@ function LecturerSessionContent() {
           {/* 🎙 Mic capture with interval-based transcription */}
           <MicCapture
             onTranscript={onTranscript}
-            transcriptionIntervalMs={sessionConfig.transcriptionIntervalMs || 10000}
+            transcriptionIntervalMs={sessionConfig.transcriptionIntervalMs || (5 * 60 * 1000)}
           />
 
           <Button onClick={startNextDraft} disabled={round.ticking || drafts.length === 0}>
@@ -377,7 +429,7 @@ function LecturerSessionContent() {
                 </Badge>
               </div>
               <div className="mt-2 space-y-2 text-sm">
-                <p><strong>Interval:</strong> {(sessionConfig.transcriptionIntervalMs || 10000) / 1000}s chunks</p>
+                <p><strong>Interval:</strong> {((sessionConfig.transcriptionIntervalMs || (5 * 60 * 1000)) / 1000 / 60).toFixed(0)} minute chunks</p>
                 <p><strong>WebSocket:</strong> {wsReady ? "Ready for transcript chunks" : "Connecting..."}</p>
               </div>
             </CardBody>
@@ -439,6 +491,17 @@ function LecturerSessionContent() {
           </Card>
         </div>
       </div>
+
+      {/* Question Selector Modal */}
+      {questionOptions && (
+        <QuestionSelector
+          questions={questionOptions.questions}
+          transcriptChunk={questionOptions.transcriptChunk}
+          chunkId={questionOptions.chunkId}
+          onQuestionSelect={handleQuestionSelect}
+          onDismiss={handleQuestionDismiss}
+        />
+      )}
     </div>
   );
 }

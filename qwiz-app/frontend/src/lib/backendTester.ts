@@ -60,9 +60,8 @@ export class BackendTester {
   async testSessionCreation(sessionData: {
     lecturer_name: string;
     course_name: string;
-    question_interval_seconds: number;
-    answer_time_seconds: number;
-    transcription_interval_seconds: number;
+    answer_time_seconds: 20 | 30 | 45 | 60 | 90;
+    transcription_interval_minutes: number;
   }): Promise<ConnectionTestResult> {
     return this.testEndpoint("/start-session", {
       method: "POST",
@@ -80,9 +79,8 @@ export class BackendTester {
     results.push(await this.testSessionCreation({
       lecturer_name: "Test Lecturer",
       course_name: "Test Course",
-      question_interval_seconds: 30,
       answer_time_seconds: 30,
-      transcription_interval_seconds: 10,
+      transcription_interval_minutes: 5,
     }));
 
     return results;

@@ -100,6 +100,94 @@ class SessionManager:
             del self.snapshot_listeners[session_id]
             print(f"Firestore listener for session {session_id} detached.")
 
+async def generate_three_questions_with_llm(transcript: str) -> List[FirestoreQuestion]:
+    """
+    Uses the Gemini API to generate 3 multiple-choice questions from a transcript.
+    Returns a list of 3 FirestoreQuestion objects for lecturer selection.
+    """
+    api_key = settings.GEMINI_API_KEY
+    if not api_key:
+        print("GEMINI_API_KEY not found in settings.")
+        return []
+
+    api_url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key={api_key}"
+
+    prompt = f"""Based on the following lecture transcript, generate exactly 3 different multiple-choice questions.
+    Each question should be distinct and cover different aspects of the transcript content.
+    For each question, provide four distinct options, and specify the correct answer.
+    Ensure all questions are directly relevant to the transcript content.
+
+    Transcript:
+    {transcript}
+    """
+
+    # Define the desired JSON schema for 3 questions
+    response_schema = {
+        "type": "OBJECT",
+        "properties": {
+            "questions": {
+                "type": "ARRAY",
+                "items": {
+                    "type": "OBJECT",
+                    "properties": {
+                        "question_text": {"type": "STRING"},
+                        "options": {
+                            "type": "ARRAY",
+                            "items": {"type": "STRING"}
+                        },
+                        "correct_answer": {"type": "STRING"}
+                    }
+                }
+            }
+        }
+    }
+
+    payload = {
+        "contents": [{"parts": [{"text": prompt}]}],
+        "generationConfig": {
+            "responseMimeType": "application/json",
+            "responseSchema": response_schema
+        }
+    }
+
+    try:
+        response = requests.post(api_url, json=payload, headers={'Content-Type': 'application/json'})
+        response.raise_for_status()
+
+        result = response.json()
+        if result.get("candidates"):
+            json_text = result["candidates"][0]["content"]["parts"][0]["text"]
+            parsed_json = json.loads(json_text)
+
+            questions = []
+            for q_data in parsed_json.get("questions", [])[:3]:  # Ensure max 3 questions
+                try:
+                    llm_question = QuestionFromLLM(**q_data)
+                    firestore_question = FirestoreQuestion(
+                        questionText=llm_question.question_text,
+                        options=llm_question.options,
+                        correctAnswer=llm_question.correct_answer,
+                        generatedBy="AI"
+                    )
+                    questions.append(firestore_question)
+                except Exception as e:
+                    print(f"Error parsing individual question: {e}")
+                    continue
+
+            return questions
+        else:
+            print("LLM response did not contain candidates.")
+            return []
+    except requests.exceptions.RequestException as e:
+        print(f"Error calling Gemini API: {e}")
+        return []
+    except json.JSONDecodeError as e:
+        print(f"Error decoding JSON from LLM response: {e}")
+        return []
+    except Exception as e:
+        print(f"An unexpected error occurred: {e}")
+        return []
+
 async def generate_question_with_llm(transcript: str) -> Optional[FirestoreQuestion]:
     """
     Uses the Gemini API to generate a single multiple-choice question from a transcript.

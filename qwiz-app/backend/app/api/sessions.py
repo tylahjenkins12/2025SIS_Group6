@@ -17,8 +17,8 @@ from fastapi import APIRouter, HTTPException, WebSocket, WebSocketDisconnect
 # Note: The import below assumes that db and session_manager are accessible this way.
 from app.dependencies import db, session_manager, analytics_service
 # from app.config import settings # You would need this import if using the settings object directly
-from app.schemas import SessionCreate, FirestoreQuestion, StudentAnswer
-from app.services import generate_question_with_llm
+from app.schemas import SessionCreate, FirestoreQuestion, StudentAnswer, LecturerQuestionSelection
+from app.services import generate_three_questions_with_llm
 
 
 router = APIRouter()
@@ -36,32 +36,43 @@ def generate_short_session_code() -> str:
     """Generate a short 6-character session code (alphanumeric, uppercase)."""
     return ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
 
-async def generate_and_save_question(session_id: str):
+async def generate_question_options_for_lecturer(session_id: str, transcript_chunk: str):
     """
-    Background task to generate and save a question from the transcript.
+    Generate 3 question options from transcript chunk and send to lecturer for selection.
     """
-    transcript = temp_transcripts.get(session_id, "")
-    if transcript and len(transcript) >= MIN_TRANSCRIPT_LENGTH:
-        print("Automatically generating question from transcript...")
-        # Make sure to pass the API key as the second argument
-        question_data = await generate_question_with_llm(transcript)
-        
-        if question_data:
-            session_ref = db.collection('sessions').document(session_id)
-            questions_ref = session_ref.collection('questions')
-            
-            # The function already returns a FirestoreQuestion object, so just use it
-            questions_ref.add(question_data.model_dump())
-            
-            # Track the question generation analytics
-            await analytics_service.track_question_generated(session_id, question_data.id, "AI")
-            
-            # Clear the temporary transcript after a question is generated
-            temp_transcripts[session_id] = ""
-            last_transcript_time[session_id] = datetime.now(timezone.utc)
-            print("Question saved to Firestore.")
-        else:
-            await session_manager.broadcast(session_id, {"type": "error", "message": "Failed to generate question automatically."})
+    if len(transcript_chunk.strip()) < MIN_TRANSCRIPT_LENGTH:
+        print(f"Transcript chunk too short ({len(transcript_chunk)} chars), skipping question generation")
+        return
+
+    print(f"Generating 3 question options from transcript chunk...")
+    question_options = await generate_three_questions_with_llm(transcript_chunk)
+
+    if question_options and len(question_options) > 0:
+        # Create a unique chunk ID for this set of questions
+        chunk_id = str(uuid.uuid4())
+
+        # Send the 3 questions to the lecturer via WebSocket
+        await session_manager.broadcast(session_id, {
+            "type": "question_options",
+            "chunk_id": chunk_id,
+            "questions": [
+                {
+                    "index": i,
+                    "question_text": q.questionText,
+                    "options": q.options,
+                    "correct_answer": q.correctAnswer
+                }
+                for i, q in enumerate(question_options)
+            ],
+            "transcript_chunk": transcript_chunk[:200] + "..." if len(transcript_chunk) > 200 else transcript_chunk
+        })
+
+        print(f"Sent {len(question_options)} question options to lecturer for session {session_id}")
+    else:
+        await session_manager.broadcast(session_id, {
+            "type": "error",
+            "message": "Failed to generate question options from transcript chunk."
+        })
 
 
 @router.post("/start-session", status_code=201)
@@ -91,9 +102,8 @@ async def start_session(session_data: SessionCreate):
             "createdAt": session_start_time,
             "lecturerName": session_data.lecturer_name,
             "courseName": session_data.course_name,
-            "questionIntervalSeconds": session_data.question_interval_seconds,
             "answerTimeSeconds": session_data.answer_time_seconds,
-            "transcriptionIntervalSeconds": session_data.transcription_interval_seconds,
+            "transcriptionIntervalSeconds": session_data.transcription_interval_minutes * 60,
             "status": "active",
             "lecturerTranscript": "",
         })
@@ -113,14 +123,52 @@ async def start_session(session_data: SessionCreate):
             "sessionId": session_id,
             "lecturerName": session_data.lecturer_name,
             "courseName": session_data.course_name,
-            "questionInterval": session_data.question_interval_seconds,
             "answerTime": session_data.answer_time_seconds,
-            "transcriptionInterval": session_data.transcription_interval_seconds
+            "transcriptionInterval": session_data.transcription_interval_minutes * 60
         }
 
     except Exception as e:
         print(f"Error creating session: {e}")
         raise HTTPException(status_code=500, detail="Error creating session")
+
+@router.post("/select-question", status_code=201)
+async def select_question(selection_data: LecturerQuestionSelection):
+    """
+    Lecturer selects one of the 3 generated questions to release to students.
+    """
+    try:
+        # Validate session exists
+        session_ref = db.collection('sessions').document(selection_data.session_id)
+        session_doc = session_ref.get()
+
+        if not session_doc.exists:
+            raise HTTPException(status_code=404, detail="Session not found")
+
+        # Note: In a full implementation, you would:
+        # 1. Store the mapping of chunk_id to the 3 questions (currently not stored)
+        # 2. Retrieve the selected question from that mapping
+        # 3. Save the selected question to Firestore
+        # 4. Broadcast the question to all students
+
+        # For now, we'll create a placeholder response
+        print(f"Lecturer selected question {selection_data.selected_question_index} for chunk {selection_data.chunk_id}")
+
+        # Broadcast to session that a question has been selected
+        await session_manager.broadcast(selection_data.session_id, {
+            "type": "question_selected",
+            "message": f"Question {selection_data.selected_question_index + 1} has been selected and released to students",
+            "chunk_id": selection_data.chunk_id
+        })
+
+        return {
+            "status": "success",
+            "message": "Question selected and released to students",
+            "selected_index": selection_data.selected_question_index
+        }
+
+    except Exception as e:
+        print(f"Error selecting question: {e}")
+        raise HTTPException(status_code=500, detail="Error processing question selection")
 
 @router.websocket("/ws/{client_type}/{session_id}")
 async def websocket_endpoint(websocket: WebSocket, client_type: str, session_id: str):
@@ -146,32 +194,7 @@ async def websocket_endpoint(websocket: WebSocket, client_type: str, session_id:
         await analytics_service.track_student_join(session_id, student_id)
 
     try:
-        # A simple background task that runs continuously to check for new questions
-        async def automatic_generation_loop():
-            while True:
-                # Get fresh session configuration for intervals
-                session_doc = session_ref.get()
-                if not session_doc.exists:
-                    break
-
-                session_data = session_doc.to_dict()
-                question_interval = session_data.get('questionIntervalSeconds', GENERATION_INTERVAL)
-                transcription_interval = session_data.get('transcriptionIntervalSeconds', 10)
-
-                # Calculate time since last chunk
-                time_diff = (datetime.now(timezone.utc) - last_transcript_time.get(session_id, datetime.now(timezone.utc))).total_seconds()
-
-                # Check if it's time to generate a question and there's enough transcript
-                # Use transcription interval as a buffer to ensure we have recent content
-                if time_diff >= question_interval and temp_transcripts.get(session_id) and len(temp_transcripts.get(session_id, "")) >= MIN_TRANSCRIPT_LENGTH:
-                    await generate_and_save_question(session_id)
-
-                # Wait for a bit before checking again (use transcription interval / 2 for responsiveness)
-                await asyncio.sleep(max(5, transcription_interval // 2))
-        
-        # Start the loop as a background task
-        if client_type == "lecturer":
-            asyncio.create_task(automatic_generation_loop())
+        # No automatic generation loop needed - questions are generated per transcript chunk
 
         while True:
             # Receive data from the WebSocket
@@ -181,21 +204,21 @@ async def websocket_endpoint(websocket: WebSocket, client_type: str, session_id:
 
             if client_type == "lecturer":
                 if message_type == "transcript_chunk":
-                    # Append the transcript chunk and update the last timestamp
+                    # Process transcript chunk and generate 3 questions for lecturer
                     transcript_chunk = message.get("chunk", "")
                     timestamp = message.get("timestamp", "")
 
-                    temp_transcripts[session_id] += transcript_chunk + " "
-                    last_transcript_time[session_id] = datetime.now(timezone.utc)
-
                     print(f"Transcript chunk received at {timestamp}: {transcript_chunk}")
 
-                    # Optional: Send acknowledgment to frontend
+                    # Send acknowledgment to frontend
                     await websocket.send_json({
                         "type": "transcript_received",
                         "chunk_length": len(transcript_chunk),
                         "timestamp": timestamp
                     })
+
+                    # Generate 3 question options for lecturer selection
+                    await generate_question_options_for_lecturer(session_id, transcript_chunk)
                     
             elif client_type == "student":
                 if message_type == "answer_submission":

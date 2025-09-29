@@ -14,13 +14,8 @@ const nextConfig: NextConfig = {
     ignoreBuildErrors: true,
   },
 
-  output: 'standalone',
-
-  // Fix the workspace root warning by explicitly setting the output file tracing root
-  // to the current frontend directory instead of searching parent directories
-  experimental: {
-    outputFileTracingRoot: path.join(__dirname),
-  },
+  // Fix the workspace root warning by moving outputFileTracingRoot out of experimental
+  outputFileTracingRoot: path.join(__dirname),
 };
 
 export default nextConfig;

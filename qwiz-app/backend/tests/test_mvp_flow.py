@@ -24,8 +24,8 @@ async def test_complete_mvp_flow():
     session_data = {
         "lecturer_name": "Dr. Test",
         "course_name": "AI Testing 101",
-        "question_interval_seconds": 20,  # 20 second intervals
-        "answer_time_seconds": 10         # 10 seconds to answer
+        "transcription_interval_minutes": 5,  # 5 minute intervals
+        "answer_time_seconds": 20         # 20 seconds to answer
     }
     
     response = requests.post(f"{BASE_URL}/start-session", json=session_data)
