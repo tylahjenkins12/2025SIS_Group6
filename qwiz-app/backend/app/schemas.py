@@ -36,7 +36,8 @@ class SessionCreate(BaseModel):
     lecturer_name: str
     course_name: str
     answer_time_seconds: Literal[20, 30, 45, 60, 90] = Field(default=30)  # 20s, 30s, 45s, 1min, 1.5min
-    transcription_interval_minutes: Literal[5, 7, 9, 12] = Field(default=5)  # Fixed intervals: 5, 7, 9, or 12 minutes
+    transcription_interval_minutes: Literal[0.33, 5, 7, 9, 12] = Field(default=5)  # Fixed intervals: 20s, 5, 7, 9, or 12 minutes
+    question_release_mode: Literal["active", "passive"] = Field(default="active")  # Active: lecturer reviews, Passive: auto-release
     
 # Model for the full Question object that will be stored in Firestore.
 # This includes the fields managed by the backend.

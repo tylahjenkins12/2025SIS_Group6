@@ -6,6 +6,7 @@ import type { BusEvent, LeaderboardRow, PublicMCQ, RoundResults } from "@/types"
 import { bus } from "@/lib/bus";
 import { Card, CardBody, Button } from "@/components/ui";
 import { ColumnChart } from "@/components/Chart";
+import { useBackendWS } from "@/lib/usebackendWS";
 
 const OVERLAY_MS = 3500;
 
@@ -40,6 +41,50 @@ export default function StudentPlayPage() {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [hideOverlay]);
+
+  // WebSocket message handler for backend communication
+  const handleWebSocketMessage = useCallback((msg: any) => {
+    if (msg.type === "new_question") {
+      // Convert backend question format to PublicMCQ format
+      const publicMcq: PublicMCQ = {
+        mcqId: msg.question.id,
+        question: msg.question.question_text,
+        options: msg.question.options.map((opt: string, idx: number) => ({
+          id: String.fromCharCode(97 + idx), // a, b, c, d
+          text: opt
+        })),
+        deadlineMs: Date.now() + (msg.question.answer_time_seconds * 1000),
+        roundMs: msg.question.answer_time_seconds * 1000
+      };
+
+      setCurrent(publicMcq);
+      setPicked(null);
+      setResults(null);
+      setShowFullLB(false);
+      tickCountdown(publicMcq.deadlineMs, publicMcq.roundMs);
+
+      // Also emit to bus for compatibility
+      bus.emit({ type: "mcq_published", code, mcq: publicMcq });
+    } else if (msg.type === "answer_result") {
+      // Handle answer feedback from backend
+      console.log("Answer result:", msg);
+    }
+  }, [code]);
+
+
+  // WebSocket connection for real-time communication with backend
+  const { send: sendWS, ready: wsReady } = useBackendWS(code, "student", handleWebSocketMessage);
+
+  // Send student name once WebSocket is ready
+  useEffect(() => {
+    if (wsReady && sendWS && name) {
+      console.log("🎓 Sending student name to backend:", name);
+      sendWS({
+        type: "student_name",
+        name: name
+      });
+    }
+  }, [wsReady, sendWS, name]);
 
   // Subscribe to events
   useEffect(() => {
@@ -91,6 +136,20 @@ export default function StudentPlayPage() {
     if (!current || picked || secondsLeft <= 0) return;
     setPicked(optionId);
 
+    // Send answer via WebSocket to backend
+    if (sendWS && wsReady) {
+      const responseTimeMs = current.deadlineMs - Date.now();
+      sendWS({
+        type: "answer_submission",
+        data: {
+          question_id: current.mcqId,
+          selected_option: current.options.find(opt => opt.id === optionId)?.text || "",
+          response_time_ms: Math.max(0, current.roundMs - responseTimeMs)
+        }
+      });
+    }
+
+    // Also emit to bus for compatibility with existing leaderboard system
     bus.emit({
       type: "answer_submitted",
       code,

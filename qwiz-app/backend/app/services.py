@@ -96,7 +96,7 @@ class SessionManager:
     def remove_listener(self, session_id: str):
         """Detaches the Firestore listener for a session."""
         if session_id in self.snapshot_listeners:
-            self.snapshot_listeners[session_id]()
+            self.snapshot_listeners[session_id].unsubscribe()
             del self.snapshot_listeners[session_id]
             print(f"Firestore listener for session {session_id} detached.")
 

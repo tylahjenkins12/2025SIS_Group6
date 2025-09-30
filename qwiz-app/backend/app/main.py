@@ -10,12 +10,15 @@ from app.config import settings
 # Use the project name from the settings for the app title
 app = FastAPI(title=settings.GOOGLE_CLOUD_PROJECT)
 
-# CORS configuration to allow requests from any origin.
+# CORS configuration - allow from specific origins in production, all origins in dev
+allowed_origins = os.getenv("ALLOWED_ORIGINS", "*").split(",") if os.getenv("ALLOWED_ORIGINS") else ["*"]
+print(f"🌐 CORS allowed origins: {allowed_origins}")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=allowed_origins,
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],
 )
 

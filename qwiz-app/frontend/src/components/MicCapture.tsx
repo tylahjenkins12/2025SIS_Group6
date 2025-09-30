@@ -64,8 +64,13 @@ export function MicCapture({
       streamRef.current = stream;
       startMeter(stream);
       setStatus("rec");
-    } catch (e) {
-      console.error(e);
+    } catch (e: any) {
+      console.error("Microphone access error:", {
+        name: e.name,
+        message: e.message,
+        constraint: e.constraint,
+        fullError: e
+      });
       setStatus("err");
     }
   };
@@ -99,9 +104,23 @@ export function MicCapture({
 
   // Unified speech recognition
   const startSpeechRecognition = async () => {
+    // Check browser compatibility
     const SR: any = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SR) {
-      console.error("Web Speech API not available");
+      console.error("Web Speech API not available. Browser compatibility issue:", {
+        userAgent: navigator.userAgent,
+        speechRecognition: !!(window as any).SpeechRecognition,
+        webkitSpeechRecognition: !!(window as any).webkitSpeechRecognition,
+        isSecureContext: window.isSecureContext,
+        protocol: window.location.protocol
+      });
+      setStatus("err");
+      return;
+    }
+
+    // Check HTTPS requirement
+    if (window.location.protocol !== 'https:' && window.location.hostname !== 'localhost') {
+      console.error("SpeechRecognition requires HTTPS for non-localhost domains");
       setStatus("err");
       return;
     }
@@ -127,7 +146,12 @@ export function MicCapture({
     };
 
     rec.onerror = (e: any) => {
-      console.error("SpeechRecognition error", e);
+      console.error("SpeechRecognition error details:", {
+        error: e.error,
+        message: e.message,
+        type: e.type,
+        fullEvent: e
+      });
       setStatus("err");
     };
 
