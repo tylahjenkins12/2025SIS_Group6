@@ -211,16 +211,21 @@ function LecturerSessionContent() {
       const clean = chunk.trim();
       if (!clean) return;
 
+      console.log(`📨 [SessionPage] Received transcript chunk (${clean.length} chars)`);
+
       // Update local transcript display
       setTranscript((t) => (t ? t + " " + clean : clean));
 
       // Send transcript chunk to backend via WebSocket
       if (sendWS && wsReady) {
+        console.log(`🚀 [SessionPage] Sending to backend via WebSocket`);
         sendWS({
           type: "transcript_chunk",
           chunk: clean,
           timestamp: new Date().toISOString()
         });
+      } else {
+        console.warn(`⚠️ [SessionPage] Cannot send - WebSocket not ready (sendWS: ${!!sendWS}, wsReady: ${wsReady})`);
       }
 
       // Broadcast locally for any other listeners

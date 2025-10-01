@@ -1,13 +1,11 @@
 # app/services.py
 import json
-import uuid
 import asyncio
 import requests
-from typing import List, Dict, Union, Optional
+from typing import List, Dict, Optional
 from datetime import datetime, timezone
 
 from fastapi import WebSocket, WebSocketDisconnect
-from google.cloud import firestore
 
 from app.config import settings
 from app.schemas import QuestionFromLLM, FirestoreQuestion
@@ -66,13 +64,28 @@ class SessionManager:
         # Reference to the questions sub-collection for the given session
         questions_ref = self.db.collection('sessions').document(session_id).collection('questions')
 
+        # Helper function to convert Firestore datetime objects to ISO strings
+        def serialize_firestore_data(data):
+            """Convert Firestore datetime objects to ISO format strings"""
+            if isinstance(data, dict):
+                return {k: serialize_firestore_data(v) for k, v in data.items()}
+            elif isinstance(data, list):
+                return [serialize_firestore_data(item) for item in data]
+            elif hasattr(data, 'isoformat'):  # datetime objects
+                return data.isoformat()
+            else:
+                return data
+
         # The on_snapshot function will be called on every change
         def on_snapshot(col_snapshot, changes, read_time):
             print(f"Snapshot received for session {session_id}")
             for change in changes:
                 if change.type.name == 'ADDED':
                     new_question_data = change.document.to_dict()
-                    
+
+                    # Convert datetime objects to ISO strings
+                    serialized_question = serialize_firestore_data(new_question_data)
+
                     # Get session configuration for answer time limit
                     session_ref = self.db.collection('sessions').document(session_id)
                     session_doc = session_ref.get()
@@ -80,14 +93,16 @@ class SessionManager:
                     if session_doc.exists:
                         session_data = session_doc.to_dict()
                         answer_time = session_data.get('answerTimeSeconds', 30)
-                    
+
                     # Broadcast the new question with timing info
+                    print(f"📤 Broadcasting question {serialized_question.get('id')} to students")
                     asyncio.run(self.broadcast(session_id, {
-                        "type": "new_question", 
-                        "question": new_question_data,
+                        "type": "new_question",
+                        "question": serialized_question,
                         "answerTimeSeconds": answer_time,
                         "questionStartTime": datetime.now(timezone.utc).isoformat()
                     }))
+                    print(f"✅ Question broadcast complete")
 
         # Start the listener and store the callback in a dictionary to manage it later
         print(f"Starting Firestore listener for session {session_id}")

@@ -88,9 +88,13 @@ export function MicCapture({
 
     intervalRef.current = setInterval(() => {
       const currentTranscript = transcriptBufferRef.current.trim();
+      console.log(`🎤 [MicCapture] Interval tick - Buffer length: ${currentTranscript.length} chars`);
       if (currentTranscript && onTranscript) {
+        console.log(`📤 [MicCapture] Sending transcript chunk: "${currentTranscript.substring(0, 50)}..."`);
         onTranscript(currentTranscript);
         transcriptBufferRef.current = ""; // Clear buffer after sending
+      } else {
+        console.log(`⏭️  [MicCapture] Skipping - buffer is empty`);
       }
     }, transcriptionIntervalMs);
   };
@@ -141,7 +145,9 @@ export function MicCapture({
         }
       }
       if (finalText.trim()) {
+        console.log(`🎙️ [MicCapture] Speech recognized: "${finalText.trim()}"`);
         transcriptBufferRef.current += finalText;
+        console.log(`📝 [MicCapture] Buffer now contains ${transcriptBufferRef.current.length} chars`);
       }
     };
 
