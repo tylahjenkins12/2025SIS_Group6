@@ -32,6 +32,8 @@ export default function StudentPlayPage() {
   const [results, setResults] = useState<RoundResults | null>(null);
   const [top, setTop] = useState<LeaderboardRow[]>([]);
   const [showFullLB, setShowFullLB] = useState(false);
+  const [explanation, setExplanation] = useState<string>("");
+  const [correctAnswer, setCorrectAnswer] = useState<string>("");
 
   // helper to close overlay
   const hideOverlay = useCallback(() => setShowFullLB(false), []);
@@ -62,7 +64,8 @@ export default function StudentPlayPage() {
           text: opt
         })),
         deadlineMs: Date.now() + (answerTimeSeconds * 1000),
-        roundMs: answerTimeSeconds * 1000
+        roundMs: answerTimeSeconds * 1000,
+        explanation: msg.question.explanation
       };
 
       console.log("✅ Question parsed. Timer:", answerTimeSeconds, "seconds");
@@ -71,6 +74,8 @@ export default function StudentPlayPage() {
       setPicked(null);
       setResults(null);
       setShowFullLB(false);
+      setExplanation("");
+      setCorrectAnswer("");
       tickCountdown(publicMcq.deadlineMs, publicMcq.roundMs);
 
       // Also emit to bus for compatibility
@@ -78,6 +83,14 @@ export default function StudentPlayPage() {
     } else if (msg.type === "answer_result") {
       // Handle answer feedback from backend
       console.log("Answer result:", msg);
+
+      // Display explanation and correct answer if provided
+      if (msg.explanation) {
+        setExplanation(msg.explanation);
+      }
+      if (msg.correct_answer) {
+        setCorrectAnswer(msg.correct_answer);
+      }
     } else if (msg.type === "leaderboard_update") {
       // Handle leaderboard updates from backend
       console.log("📊 Leaderboard update:", msg.leaderboard);
@@ -157,11 +170,13 @@ export default function StudentPlayPage() {
   // Auto-hide question when time runs out
   useEffect(() => {
     if (current && secondsLeft <= 0) {
-      // Wait a moment to show "time's up" state, then clear the question
+      // Wait 10 seconds to allow students to read the explanation, then clear the question
       const timeout = setTimeout(() => {
         setCurrent(null);
         setPicked(null);
-      }, 2000); // 2 second delay before hiding
+        setExplanation("");
+        setCorrectAnswer("");
+      }, 10000); // 10 second delay before hiding
       return () => clearTimeout(timeout);
     }
   }, [current, secondsLeft]);
@@ -335,13 +350,15 @@ export default function StudentPlayPage() {
 
                 {/* Status message - moved above options for better visibility */}
                 {picked && (
-                  <div className="mb-4 p-4 bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-xl shadow-lg border-2 border-green-400">
-                    <p className="font-bold text-center flex items-center justify-center gap-2">
-                      <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                      </svg>
-                      Answer Submitted! Waiting for other students...
-                    </p>
+                  <div className="mb-4">
+                    <div className="p-4 bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-xl shadow-lg border-2 border-green-400">
+                      <p className="font-bold text-center flex items-center justify-center gap-2">
+                        <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                        </svg>
+                        Answer Submitted! Waiting for other students...
+                      </p>
+                    </div>
                   </div>
                 )}
 
@@ -417,6 +434,28 @@ export default function StudentPlayPage() {
                     );
                   })}
                 </ul>
+
+                {/* Explanation card - shown at bottom after answer submission */}
+                {picked && explanation && (
+                  <div className="mt-4 p-4 bg-blue-50 border-2 border-blue-300 rounded-xl shadow-md">
+                    <div className="flex items-start gap-3">
+                      <svg className="w-6 h-6 text-blue-600 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                      </svg>
+                      <div className="flex-1">
+                        <h4 className="font-bold text-blue-900 mb-2">Answer Explanation</h4>
+                        {correctAnswer && (
+                          <div className="mb-2 p-2 bg-green-100 border border-green-300 rounded-lg">
+                            <p className="text-sm font-semibold text-green-900">
+                              ✓ Correct Answer: <span className="font-bold">{correctAnswer}</span>
+                            </p>
+                          </div>
+                        )}
+                        <p className="text-sm text-blue-800">{explanation}</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </CardBody>
             </Card>
           )}
