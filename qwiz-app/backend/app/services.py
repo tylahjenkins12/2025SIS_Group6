@@ -150,7 +150,8 @@ async def generate_three_questions_with_llm(transcript: str) -> List[FirestoreQu
                             "type": "ARRAY",
                             "items": {"type": "STRING"}
                         },
-                        "correct_answer": {"type": "STRING"}
+                        "correct_answer": {"type": "STRING"},
+                        "explanation": {"type": "STRING"}
                     }
                 }
             }
@@ -182,6 +183,7 @@ async def generate_three_questions_with_llm(transcript: str) -> List[FirestoreQu
                         questionText=llm_question.question_text,
                         options=llm_question.options,
                         correctAnswer=llm_question.correct_answer,
+                        explanation=llm_question.explanation,
                         generatedBy="AI"
                     )
                     questions.append(firestore_question)
