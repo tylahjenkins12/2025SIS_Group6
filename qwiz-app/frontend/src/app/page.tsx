@@ -1,7 +1,6 @@
 // app/page.tsx
 import Link from "next/link";
 import { Card, CardBody, Button } from "@/components/ui";
-import PreviewMock from "@/components/PreviewMock";
 
 export default function HomePage() {
   return (
@@ -18,17 +17,14 @@ export default function HomePage() {
 
           {/* Desktop nav */}
           <nav className="hidden items-center gap-6 text-sm text-slate-600 sm:flex">
-            <a href="#how" className="hover:text-slate-900">
-              How it works
-            </a>
-            <a href="#features" className="hover:text-slate-900">
-              Features
-            </a>
-            <a href="#privacy" className="hover:text-slate-900">
-              Privacy
-            </a>
-            <Link href="/contact" className="hover:text-slate-900">
-              Contact
+            <Link href="/about" className="hover:text-slate-900">
+              About
+            </Link>
+            <Link href="/lecturer" className="hover:text-slate-900">
+              Start Session
+            </Link>
+            <Link href="/student" className="hover:text-slate-900">
+              Join Session
             </Link>
           </nav>
 
@@ -41,17 +37,14 @@ export default function HomePage() {
               Menu
             </summary>
             <div className="absolute right-0 mt-2 w-48 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-lg">
-              <a href="#how" className="block px-4 py-2 text-sm hover:bg-slate-50">
-                How it works
-              </a>
-              <a href="#features" className="block px-4 py-2 text-sm hover:bg-slate-50">
-                Features
-              </a>
-              <a href="#privacy" className="block px-4 py-2 text-sm hover:bg-slate-50">
-                Privacy
-              </a>
-              <Link href="/contact" className="block px-4 py-2 text-sm hover:bg-slate-50">
-                Contact
+              <Link href="/about" className="block px-4 py-2 text-sm hover:bg-slate-50">
+                About
+              </Link>
+              <Link href="/lecturer" className="block px-4 py-2 text-sm hover:bg-slate-50">
+                Start Session
+              </Link>
+              <Link href="/student" className="block px-4 py-2 text-sm hover:bg-slate-50">
+                Join Session
               </Link>
             </div>
           </details>
@@ -59,127 +52,147 @@ export default function HomePage() {
       </header>
 
       {/* HERO (full-bleed) */}
-      <section className="bg-gradient-to-br from-indigo-50 via-white to-purple-50">
-        <div className="mx-auto grid max-w-6xl gap-10 px-4 py-12 sm:px-6 lg:grid-cols-2 lg:py-20">
-          <div className="text-center lg:text-left">
-            <h1 className="bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-4xl font-bold tracking-tight text-transparent sm:text-5xl md:text-6xl">
-              Engage your class. Get instant feedback. Learn smarter.
+      <section className="relative bg-gradient-to-br from-indigo-50 via-white to-purple-50 overflow-hidden">
+        {/* Background decorative elements */}
+        <div className="absolute inset-0">
+          <div className="absolute top-0 left-0 w-72 h-72 bg-indigo-100 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob"></div>
+          <div className="absolute top-0 right-0 w-72 h-72 bg-purple-100 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob animation-delay-2000"></div>
+          <div className="absolute -bottom-8 left-20 w-72 h-72 bg-pink-100 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob animation-delay-4000"></div>
+        </div>
+
+        <div className="relative mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8 lg:py-24">
+          <div className="text-center">
+            <h1 className="text-4xl font-bold tracking-tight text-slate-900 sm:text-5xl lg:text-6xl">
+              Transform Your
+              <span className="bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent block">
+                Classroom Experience
+              </span>
             </h1>
-            <p className="mt-4 text-base text-slate-600 sm:text-lg">
-              Real-time AI quizzes for lectures with instant insights.
+            <p className="mt-6 max-w-2xl mx-auto text-lg text-slate-600 sm:text-xl">
+              AI-powered quizzes that adapt to your lecture in real-time. Engage students,
+              get instant feedback, and make learning interactive.
             </p>
-            <div className="mt-6 flex flex-col items-center gap-3 sm:flex-row lg:justify-start">
-              <Button asChild>
-                <Link href="/lecturer" aria-label="Start a session as a lecturer">
-                  Start a session
+
+            <div className="mt-10 flex flex-col sm:flex-row gap-4 justify-center">
+              <Button asChild size="lg" className="text-base px-8 py-3">
+                <Link href="/lecturer">
+                  🎓 Start Teaching
+                </Link>
+              </Button>
+              <Button variant="secondary" asChild size="lg" className="text-base px-8 py-3">
+                <Link href="/student">
+                  📚 Join Session
                 </Link>
               </Button>
             </div>
-            <p id="privacy" className="mt-3 text-xs text-slate-500 sm:text-sm">
-              No student accounts. No data stored after class.
+
+            <p className="mt-6 text-sm text-slate-500">
+              ✨ No accounts required • 🔒 Privacy-first • 📱 Works on any device
             </p>
           </div>
 
-          {/* Split CTA cards */}
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Card className="transition hover:-translate-y-0.5 hover:shadow-md focus-within:shadow-md">
-              <CardBody>
-                <h2 className="text-lg font-semibold sm:text-xl">🎓 Lecturer</h2>
-                <p className="mt-2 text-sm text-slate-600">
-                  Start & publish questions to your class.
-                </p>
-                <div className="mt-4">
-                  <Button asChild aria-label="I'm teaching">
-                    <Link href="/lecturer">I’m teaching</Link>
-                  </Button>
-                </div>
-              </CardBody>
-            </Card>
+        </div>
+      </section>
 
-            <Card className="transition hover:-translate-y-0.5 hover:shadow-md focus-within:shadow-md">
-              <CardBody>
-                <h2 className="text-lg font-semibold sm:text-xl">📚 Student</h2>
-                <p className="mt-2 text-sm text-slate-600">
-                  Join with a code & answer MCQs.
-                </p>
-                <div className="mt-4">
-                  <Button variant="secondary" asChild aria-label="I'm learning">
-                    <Link href="/student">I’m learning</Link>
-                  </Button>
+      {/* Simple How it works */}
+      <section className="py-16 bg-white">
+        <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 text-center">
+          <h2 className="text-3xl font-bold text-slate-900 sm:text-4xl mb-8">
+            Start in under 60 seconds
+          </h2>
+
+          <div className="grid gap-6 md:grid-cols-3 mb-12">
+            <div className="flex items-center justify-center gap-3 text-slate-600">
+              <span className="w-8 h-8 bg-indigo-100 rounded-full flex items-center justify-center text-indigo-600 font-semibold">1</span>
+              <span>Create session</span>
+            </div>
+            <div className="flex items-center justify-center gap-3 text-slate-600">
+              <span className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center text-purple-600 font-semibold">2</span>
+              <span>Start teaching</span>
+            </div>
+            <div className="flex items-center justify-center gap-3 text-slate-600">
+              <span className="w-8 h-8 bg-emerald-100 rounded-full flex items-center justify-center text-emerald-600 font-semibold">3</span>
+              <span>Students engage</span>
+            </div>
+          </div>
+
+          <p className="text-lg text-slate-600 mb-8">
+            AI generates questions from your lecture. Students join with a code. Get instant feedback.
+          </p>
+
+          <Link
+            href="/about"
+            className="inline-flex items-center text-indigo-600 hover:text-indigo-700 font-semibold"
+          >
+            See detailed walkthrough →
+          </Link>
+        </div>
+      </section>
+
+      {/* Video Demo Section */}
+      <section className="relative py-16 bg-gradient-to-br from-indigo-50 via-white to-purple-50 overflow-hidden">
+        {/* Background decorative elements */}
+        <div className="absolute inset-0">
+          <div className="absolute top-0 left-0 w-72 h-72 bg-indigo-100 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob"></div>
+          <div className="absolute top-0 right-0 w-72 h-72 bg-purple-100 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob animation-delay-2000"></div>
+          <div className="absolute -bottom-8 left-20 w-72 h-72 bg-pink-100 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob animation-delay-4000"></div>
+        </div>
+        <div className="relative mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl font-bold text-slate-900 sm:text-4xl">
+              See Qwiz in action
+            </h2>
+            <p className="mt-4 text-lg text-slate-600">
+              Watch how easy it is to create engaging quizzes from your lectures
+            </p>
+          </div>
+
+          {/* Video placeholder - replace with actual video component when ready */}
+          <div className="relative aspect-video bg-slate-200 rounded-2xl overflow-hidden shadow-2xl">
+            <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-indigo-500 to-purple-600">
+              <div className="text-center text-white">
+                <div className="w-20 h-20 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-4 backdrop-blur">
+                  <svg className="w-8 h-8" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M8 5v14l11-7z"/>
+                  </svg>
                 </div>
-              </CardBody>
-            </Card>
+                <h3 className="text-xl font-semibold mb-2">Demo Video Coming Soon</h3>
+                <p className="text-indigo-100">
+                  See how Qwiz transforms lectures into interactive experiences
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-8 text-center">
+            <Link
+              href="/about"
+              className="inline-flex items-center text-indigo-600 hover:text-indigo-700 font-semibold"
+            >
+              Learn more about how it works →
+            </Link>
           </div>
         </div>
       </section>
 
-      {/* Trust strip (full-bleed, subtle) */}
-      <section className="border-y border-slate-100 bg-slate-50/60">
-        <div className="mx-auto grid max-w-6xl grid-cols-1 gap-2 px-4 py-4 text-center text-xs text-slate-600 sm:grid-cols-3 sm:text-sm sm:px-6">
-          <div>🏫 Built at UTS SIS</div>
-          <div>🔒 Privacy-first</div>
-          <div>📱 Works on mobile & split-screen</div>
-        </div>
-      </section>
-
-      {/* How it works */}
-      <section id="how" className="mx-auto max-w-6xl px-4 py-12 sm:px-6 sm:py-16">
-        <h3 className="text-center text-xl font-semibold text-slate-900 sm:text-2xl">How it works</h3>
-        <div className="mt-6 grid gap-4 sm:mt-8 sm:grid-cols-3">
-          <Card>
-            <CardBody className="text-center">
-              <div className="text-3xl">🎤</div>
-              <h4 className="mt-2 font-medium">Start a session</h4>
-              <p className="mt-1 text-sm text-slate-600">Lecturer speaks, Qwiz listens.</p>
-            </CardBody>
-          </Card>
-          <Card>
-            <CardBody className="text-center">
-              <div className="text-3xl">🔑</div>
-              <h4 className="mt-2 font-medium">Students join</h4>
-              <p className="mt-1 text-sm text-slate-600">Enter the session code from any device.</p>
-            </CardBody>
-          </Card>
-          <Card>
-            <CardBody className="text-center">
-              <div className="text-3xl">🎉</div>
-              <h4 className="mt-2 font-medium">Quiz & feedback</h4>
-              <p className="mt-1 text-sm text-slate-600">Instant scoring & live insights.</p>
-            </CardBody>
-          </Card>
-        </div>
-      </section>
-
-      {/* Preview */}
-      <section className="mx-auto max-w-6xl px-4 sm:px-6">
-        <Card className="overflow-hidden">
-          <CardBody className="p-0">
-            <PreviewMock duration={20} />
-            <div className="px-4 py-3 text-sm text-slate-600 sm:px-6">
-              Live leaderboard and instant insights for lecturers.
-            </div>
-          </CardBody>
-        </Card>
-      </section>
-
-      {/* Features */}
-      <section id="features" className="mx-auto max-w-6xl px-4 py-12 sm:px-6 sm:py-16">
-        <h3 className="text-center text-xl font-semibold text-slate-900 sm:text-2xl">Why Qwiz?</h3>
-        <div className="mt-6 grid gap-4 sm:mt-8 sm:grid-cols-2 lg:grid-cols-4">
-          {[
-            { icon: "⚡️", title: "Real-time AI", desc: "Questions generated from the lecture audio." },
-            { icon: "✅", title: "Instant feedback", desc: "Scores & answers shown immediately." },
-            { icon: "🛡️", title: "No accounts", desc: "Join with a code—nothing stored after class." },
-            { icon: "🧩", title: "Classroom-ready", desc: "Responsive, accessible, split-screen friendly." },
-          ].map((f) => (
-            <Card key={f.title}>
-              <CardBody>
-                <div className="text-2xl">{f.icon}</div>
-                <h4 className="mt-2 font-medium">{f.title}</h4>
-                <p className="mt-1 text-sm text-slate-600">{f.desc}</p>
-              </CardBody>
-            </Card>
-          ))}
+      {/* Final CTA */}
+      <section className="bg-gradient-to-r from-indigo-600 to-purple-600 py-16">
+        <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 text-center">
+          <h2 className="text-3xl font-bold text-white sm:text-4xl mb-6">
+            Ready to get started?
+          </h2>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <Button asChild size="lg" className="bg-white text-indigo-600 hover:bg-gray-50 text-base px-8 py-3">
+              <Link href="/lecturer">
+                Create Session
+              </Link>
+            </Button>
+            <Button variant="outline" asChild size="lg" className="border-white text-white hover:bg-white hover:text-indigo-600 text-base px-8 py-3">
+              <Link href="/student">
+                Join Session
+              </Link>
+            </Button>
+          </div>
         </div>
       </section>
     </div>

@@ -2,28 +2,25 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui";
 
-type Mode = "browser" | "server";
-
 export function MicCapture({
-  mode = "browser",
-  chunkMs = 2000,
   onTranscript,
+  transcriptionIntervalMs = 10000,
   disabled = false,
 }: {
-  mode?: Mode;
-  chunkMs?: number;
   onTranscript?: (text: string) => void;
+  transcriptionIntervalMs?: number;
   disabled?: boolean;
 }) {
   const [recording, setRecording] = useState(false);
   const [status, setStatus] = useState<"idle" | "rec" | "err">("idle");
   const [level, setLevel] = useState(0); // 0..100
   const streamRef = useRef<MediaStream | null>(null);
-  const mediaRecRef = useRef<MediaRecorder | null>(null);
   const rafRef = useRef<number | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
   const audioCtxRef = useRef<AudioContext | null>(null);
   const recognitionRef = useRef<any>(null);
+  const transcriptBufferRef = useRef<string>("");
+  const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // meter
   const startMeter = (stream: MediaStream) => {
@@ -67,8 +64,13 @@ export function MicCapture({
       streamRef.current = stream;
       startMeter(stream);
       setStatus("rec");
-    } catch (e) {
-      console.error(e);
+    } catch (e: any) {
+      console.error("Microphone access error:", {
+        name: e.name,
+        message: e.message,
+        constraint: e.constraint,
+        fullError: e
+      });
       setStatus("err");
     }
   };
@@ -80,82 +82,116 @@ export function MicCapture({
     setStatus("idle");
   };
 
-  // BROWSER MODE (Web Speech API)
-  const startBrowserSTT = async () => {
+  // Start interval-based transcription sending
+  const startTranscriptionInterval = () => {
+    if (intervalRef.current) clearInterval(intervalRef.current);
+
+    intervalRef.current = setInterval(() => {
+      const currentTranscript = transcriptBufferRef.current.trim();
+      console.log(`🎤 [MicCapture] Interval tick - Buffer length: ${currentTranscript.length} chars`);
+      if (currentTranscript && onTranscript) {
+        console.log(`📤 [MicCapture] Sending transcript chunk: "${currentTranscript.substring(0, 50)}..."`);
+        onTranscript(currentTranscript);
+        transcriptBufferRef.current = ""; // Clear buffer after sending
+      } else {
+        console.log(`⏭️  [MicCapture] Skipping - buffer is empty`);
+      }
+    }, transcriptionIntervalMs);
+  };
+
+  const stopTranscriptionInterval = () => {
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
+  };
+
+  // Unified speech recognition
+  const startSpeechRecognition = async () => {
+    // Check browser compatibility
     const SR: any = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SR) {
-      console.warn("Web Speech API not available, falling back to server mode.");
-      return startServerSTT();
+      console.error("Web Speech API not available. Browser compatibility issue:", {
+        userAgent: navigator.userAgent,
+        speechRecognition: !!(window as any).SpeechRecognition,
+        webkitSpeechRecognition: !!(window as any).webkitSpeechRecognition,
+        isSecureContext: window.isSecureContext,
+        protocol: window.location.protocol
+      });
+      setStatus("err");
+      return;
     }
+
+    // Check HTTPS requirement
+    if (window.location.protocol !== 'https:' && window.location.hostname !== 'localhost') {
+      console.error("SpeechRecognition requires HTTPS for non-localhost domains");
+      setStatus("err");
+      return;
+    }
+
     await startMedia();
     const rec = new SR();
     recognitionRef.current = rec;
     rec.lang = "en-US";
     rec.continuous = true;
     rec.interimResults = true;
+
     rec.onresult = (ev: any) => {
-      let finalChunk = "";
+      let finalText = "";
       for (let i = ev.resultIndex; i < ev.results.length; i++) {
-        const res = ev.results[i];
-        if (res.isFinal) finalChunk += res[0].transcript;
+        const result = ev.results[i];
+        if (result.isFinal) {
+          finalText += result[0].transcript + " ";
+        }
       }
-      if (finalChunk && onTranscript) onTranscript(finalChunk.trim());
+      if (finalText.trim()) {
+        console.log(`🎙️ [MicCapture] Speech recognized: "${finalText.trim()}"`);
+        transcriptBufferRef.current += finalText;
+        console.log(`📝 [MicCapture] Buffer now contains ${transcriptBufferRef.current.length} chars`);
+      }
     };
+
     rec.onerror = (e: any) => {
-      console.error("SpeechRecognition error", e);
+      console.error("SpeechRecognition error details:", {
+        error: e.error,
+        message: e.message,
+        type: e.type,
+        fullEvent: e
+      });
       setStatus("err");
     };
+
     rec.onend = () => {
       if (recording) rec.start(); // auto-restart if still recording
     };
+
     rec.start();
+    startTranscriptionInterval();
   };
 
-  const stopBrowserSTT = () => {
+  const stopSpeechRecognition = () => {
     try { recognitionRef.current?.stop(); } catch {}
     recognitionRef.current = null;
-    stopMedia();
-  };
+    stopTranscriptionInterval();
 
-  // SERVER MODE (MediaRecorder → POST /api/stt)
-  const startServerSTT = async () => {
-    await startMedia();
-    if (!streamRef.current) return;
-    const rec = new MediaRecorder(streamRef.current, { mimeType: "audio/webm;codecs=opus", bitsPerSecond: 96_000 });
-    mediaRecRef.current = rec;
-    rec.ondataavailable = async (ev) => {
-      if (!ev.data || ev.data.size === 0) return;
-      try {
-        const fd = new FormData();
-        fd.append("audio", ev.data, `chunk.webm`);
-        const res = await fetch("/api/stt", { method: "POST", body: fd });
-        if (res.ok) {
-          const json = await res.json();
-          if (json.text && onTranscript) onTranscript(String(json.text));
-        }
-      } catch (e) {
-        console.error("Upload chunk failed", e);
-      }
-    };
-    rec.start(chunkMs); // emit chunks every chunkMs
-  };
+    // Send any remaining transcript
+    const remainingTranscript = transcriptBufferRef.current.trim();
+    if (remainingTranscript && onTranscript) {
+      onTranscript(remainingTranscript);
+    }
+    transcriptBufferRef.current = "";
 
-  const stopServerSTT = () => {
-    try { mediaRecRef.current?.stop(); } catch {}
-    mediaRecRef.current = null;
     stopMedia();
   };
 
   const start = async () => {
     setRecording(true);
-    if (mode === "browser") await startBrowserSTT();
-    else await startServerSTT();
+    await startSpeechRecognition();
   };
 
   const stop = () => {
     setRecording(false);
-    if (mode === "browser") stopBrowserSTT();
-    else stopServerSTT();
+    stopSpeechRecognition();
   };
 
   useEffect(() => () => stop(), []); // cleanup

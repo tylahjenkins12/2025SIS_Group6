@@ -1,12 +1,10 @@
 # app/analytics.py
+from datetime import datetime
+from typing import Dict, Optional
 
-import asyncio
-from datetime import datetime, timezone
-from typing import Dict, List, Optional
-from google.cloud import firestore
 from app.schemas import (
     StudentJoinEvent, StudentLeaveEvent, QuestionGeneratedEvent, 
-    AnswerSubmittedEvent, SessionAnalytics, StudentScore, Leaderboard, SessionEnd
+    AnswerSubmittedEvent, SessionAnalytics, SessionEnd
 )
 
 class AnalyticsService:
@@ -19,17 +17,29 @@ class AnalyticsService:
         self.active_students: Dict[str, set] = {}  # session_id -> set of student_ids
         self.session_stats: Dict[str, Dict] = {}   # session_id -> stats
         self.student_scores: Dict[str, Dict[str, Dict]] = {}  # session_id -> student_id -> score_data
+        self.student_names: Dict[str, Dict[str, str]] = {}  # session_id -> student_id -> name
         
-    async def track_student_join(self, session_id: str, student_id: str):
+    def set_student_name(self, session_id: str, student_id: str, name: str):
+        """Set or update a student's display name."""
+        if session_id not in self.student_names:
+            self.student_names[session_id] = {}
+        self.student_names[session_id][student_id] = name
+
+    async def track_student_join(self, session_id: str, student_id: str, student_name: str = None):
         """Track when a student joins a session."""
         event = StudentJoinEvent(student_id=student_id, session_id=session_id)
-        
+
         # Add to in-memory tracking
         if session_id not in self.active_students:
             self.active_students[session_id] = set()
             self.student_scores[session_id] = {}
+            self.student_names[session_id] = {}
         self.active_students[session_id].add(student_id)
-        
+
+        # Store student name if provided
+        if student_name:
+            self.student_names[session_id][student_id] = student_name
+
         # Initialize student score tracking
         if student_id not in self.student_scores[session_id]:
             self.student_scores[session_id][student_id] = {
@@ -38,11 +48,11 @@ class AnalyticsService:
                 'total_answers': 0,
                 'total_response_time': 0
             }
-        
+
         # Save event to Firestore
         analytics_ref = self.db.collection('sessions').document(session_id).collection('analytics')
         await self._save_event(analytics_ref, 'student_join', event.model_dump())
-        
+
         # Update and broadcast session analytics
         await self._update_session_analytics(session_id)
         
@@ -126,12 +136,12 @@ class AnalyticsService:
         
         # Update and broadcast session analytics
         await self._update_session_analytics(session_id)
-        
+
         # Also broadcast updated leaderboard after each answer
         leaderboard = await self.get_leaderboard(session_id)
         await self.session_manager.broadcast(session_id, {
             "type": "leaderboard_update",
-            "leaderboard": leaderboard.model_dump()
+            "leaderboard": leaderboard  # Already a dict
         })
         
     async def get_session_analytics(self, session_id: str) -> SessionAnalytics:
@@ -180,31 +190,36 @@ class AnalyticsService:
         except Exception as e:
             print(f"Error saving analytics event: {e}")
             
-    async def get_leaderboard(self, session_id: str, limit: int = 10) -> Leaderboard:
-        """Get current session leaderboard."""
-        student_scores = []
-        
+    async def get_leaderboard(self, session_id: str, limit: int = 10) -> dict:
+        """Get current session leaderboard with student names."""
+        student_list = []
+
         if session_id in self.student_scores:
+            student_names = self.student_names.get(session_id, {})
+
             for student_id, data in self.student_scores[session_id].items():
                 avg_response_time = None
                 if data['total_answers'] > 0 and data['total_response_time'] > 0:
                     avg_response_time = data['total_response_time'] / data['total_answers']
-                    
-                student_scores.append(StudentScore(
-                    student_id=student_id,
-                    score=data['score'],
-                    correct_answers=data['correct_answers'],
-                    total_answers=data['total_answers'],
-                    average_response_time_ms=avg_response_time
-                ))
-        
+
+                # Use student name if available, otherwise use student_id
+                display_name = student_names.get(student_id, f"Student {student_id[-4:]}")
+
+                student_list.append({
+                    "student_id": display_name,  # Using display name for compatibility
+                    "score": data['score'],
+                    "correct_answers": data['correct_answers'],
+                    "total_answers": data['total_answers'],
+                    "average_response_time_ms": avg_response_time
+                })
+
         # Sort by score (highest first)
-        student_scores.sort(key=lambda x: x.score, reverse=True)
-        
-        return Leaderboard(
-            session_id=session_id,
-            students=student_scores[:limit]
-        )
+        student_list.sort(key=lambda x: x['score'], reverse=True)
+
+        return {
+            "session_id": session_id,
+            "students": student_list[:limit]
+        }
         
     async def end_session(self, session_id: str, session_start_time: datetime) -> SessionEnd:
         """End session and return final results."""

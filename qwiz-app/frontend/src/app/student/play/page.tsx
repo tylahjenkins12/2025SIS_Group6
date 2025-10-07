@@ -1,25 +1,29 @@
 "use client";
 
-import { useEffect, useMemo, useState, useCallback } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import type { BusEvent, LeaderboardRow, PublicMCQ, RoundResults } from "@/types";
 import { bus } from "@/lib/bus";
 import { Card, CardBody, Button } from "@/components/ui";
 import { ColumnChart } from "@/components/Chart";
+import { useBackendWS } from "@/lib/usebackendWS";
 
 const OVERLAY_MS = 3500;
 
 export default function StudentPlayPage() {
   const router = useRouter();
 
-  const code = useMemo(
-    () => (typeof window !== "undefined" ? sessionStorage.getItem("mvp_code") ?? "" : ""),
-    []
-  );
-  const name = useMemo(
-    () => (typeof window !== "undefined" ? sessionStorage.getItem("mvp_name") ?? "Anon" : "Anon"),
-    []
-  );
+  // Use state to avoid hydration errors - only set after client mount
+  const [code, setCode] = useState("");
+  const [name, setName] = useState("Anon");
+  const [mounted, setMounted] = useState(false);
+
+  // Set values from sessionStorage only on client side after mount
+  useEffect(() => {
+    setCode(sessionStorage.getItem("mvp_code") ?? "");
+    setName(sessionStorage.getItem("mvp_name") ?? "Anon");
+    setMounted(true);
+  }, []);
 
   const [current, setCurrent] = useState<PublicMCQ | null>(null);
   const [picked, setPicked] = useState<string | null>(null);
@@ -40,6 +44,69 @@ export default function StudentPlayPage() {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [hideOverlay]);
+
+  // WebSocket message handler for backend communication
+  const handleWebSocketMessage = useCallback((msg: any) => {
+    if (msg.type === "new_question") {
+      console.log("📨 Received new question:", msg);
+
+      // Get answer time from the message (sent separately from question object)
+      const answerTimeSeconds = msg.answerTimeSeconds || msg.question?.answer_time_seconds || 30;
+
+      // Convert backend question format to PublicMCQ format
+      const publicMcq: PublicMCQ = {
+        mcqId: msg.question.id,
+        question: msg.question.questionText || msg.question.question_text,
+        options: msg.question.options.map((opt: string, idx: number) => ({
+          id: String.fromCharCode(97 + idx), // a, b, c, d
+          text: opt
+        })),
+        deadlineMs: Date.now() + (answerTimeSeconds * 1000),
+        roundMs: answerTimeSeconds * 1000
+      };
+
+      console.log("✅ Question parsed. Timer:", answerTimeSeconds, "seconds");
+
+      setCurrent(publicMcq);
+      setPicked(null);
+      setResults(null);
+      setShowFullLB(false);
+      tickCountdown(publicMcq.deadlineMs, publicMcq.roundMs);
+
+      // Also emit to bus for compatibility
+      bus.emit({ type: "mcq_published", code, mcq: publicMcq });
+    } else if (msg.type === "answer_result") {
+      // Handle answer feedback from backend
+      console.log("Answer result:", msg);
+    } else if (msg.type === "leaderboard_update") {
+      // Handle leaderboard updates from backend
+      console.log("📊 Leaderboard update:", msg.leaderboard);
+      if (msg.leaderboard && msg.leaderboard.students) {
+        const leaderboardData = msg.leaderboard.students.map((student: any) => ({
+          name: student.student_id, // We'll use student_id as name for now
+          score: student.score
+        }));
+        setTop(leaderboardData);
+        // Also emit to bus for compatibility
+        bus.emit({ type: "leaderboard_update", code, top: leaderboardData });
+      }
+    }
+  }, [code]);
+
+
+  // WebSocket connection for real-time communication with backend
+  const { send: sendWS, ready: wsReady } = useBackendWS(code, "student", handleWebSocketMessage);
+
+  // Send student name once WebSocket is ready
+  useEffect(() => {
+    if (wsReady && sendWS && name) {
+      console.log("🎓 Sending student name to backend:", name);
+      sendWS({
+        type: "student_name",
+        name: name
+      });
+    }
+  }, [wsReady, sendWS, name]);
 
   // Subscribe to events
   useEffect(() => {
@@ -87,10 +154,36 @@ export default function StudentPlayPage() {
     const id = setInterval(update, 250);
   }
 
+  // Auto-hide question when time runs out
+  useEffect(() => {
+    if (current && secondsLeft <= 0) {
+      // Wait a moment to show "time's up" state, then clear the question
+      const timeout = setTimeout(() => {
+        setCurrent(null);
+        setPicked(null);
+      }, 2000); // 2 second delay before hiding
+      return () => clearTimeout(timeout);
+    }
+  }, [current, secondsLeft]);
+
   function submit(optionId: string) {
     if (!current || picked || secondsLeft <= 0) return;
     setPicked(optionId);
 
+    // Send answer via WebSocket to backend
+    if (sendWS && wsReady) {
+      const responseTimeMs = current.deadlineMs - Date.now();
+      sendWS({
+        type: "answer_submission",
+        data: {
+          question_id: current.mcqId,
+          selected_option: current.options.find(opt => opt.id === optionId)?.text || "",
+          response_time_ms: Math.max(0, current.roundMs - responseTimeMs)
+        }
+      });
+    }
+
+    // Also emit to bus for compatibility with existing leaderboard system
     bus.emit({
       type: "answer_submitted",
       code,
@@ -209,49 +302,121 @@ export default function StudentPlayPage() {
           {current && (
             <Card>
               <CardBody>
-                <div className="flex items-center justify-between">
-                  <h3 className="text-lg font-semibold">Time left</h3>
-                  <div className="rounded-full bg-indigo-600 px-3 py-1 text-sm text-white">
-                    {secondsLeft}s
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-xl font-bold text-slate-800">{current.question}</h3>
+
+                  {/* Enhanced timer display */}
+                  <div className={[
+                    "flex items-center gap-2 px-4 py-2 rounded-2xl shadow-lg font-bold text-lg transition-all duration-300",
+                    secondsLeft <= 5 ? "bg-gradient-to-r from-red-500 to-orange-500 text-white animate-pulse" :
+                    secondsLeft <= 10 ? "bg-gradient-to-r from-orange-400 to-yellow-400 text-white" :
+                    "bg-gradient-to-r from-indigo-500 to-purple-500 text-white"
+                  ].join(" ")}>
+                    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
+                    </svg>
+                    <span className="min-w-[3rem] text-center">{secondsLeft}s</span>
                   </div>
                 </div>
 
                 {/* Progress bar */}
-                <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-gray-200">
+                <div className="mb-6 h-3 w-full overflow-hidden rounded-full bg-gray-200 shadow-inner">
                   <div
-                    className="h-full bg-gradient-to-r from-indigo-500 to-purple-500 transition-[width] duration-200"
+                    className={[
+                      "h-full transition-all duration-300",
+                      secondsLeft <= 5 ? "bg-gradient-to-r from-red-500 to-orange-500" :
+                      secondsLeft <= 10 ? "bg-gradient-to-r from-orange-400 to-yellow-400" :
+                      "bg-gradient-to-r from-indigo-500 to-purple-500"
+                    ].join(" ")}
                     style={{ width: `${progressPct}%` }}
                     aria-hidden
                   />
                 </div>
 
-                <p className="mt-3 font-medium">{current.question}</p>
+                {/* Status message - moved above options for better visibility */}
+                {picked && (
+                  <div className="mb-4 p-4 bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-xl shadow-lg border-2 border-green-400">
+                    <p className="font-bold text-center flex items-center justify-center gap-2">
+                      <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                      </svg>
+                      Answer Submitted! Waiting for other students...
+                    </p>
+                  </div>
+                )}
 
-                <ul className="mt-4 space-y-2">
-                  {current.options.map((o) => {
+                <ul className="space-y-3">
+                  {current.options.map((o, idx) => {
                     const isPicked = picked === o.id;
+                    const isDisabled = !!picked || secondsLeft <= 0;
+
+                    // Color schemes for each option
+                    const colorSchemes = [
+                      { // A - Blue
+                        border: "border-blue-300",
+                        bg: "bg-blue-50",
+                        hover: "hover:bg-blue-100",
+                        label: "bg-blue-500",
+                        picked: "border-blue-500 bg-blue-100 ring-2 ring-blue-300"
+                      },
+                      { // B - Green
+                        border: "border-green-300",
+                        bg: "bg-green-50",
+                        hover: "hover:bg-green-100",
+                        label: "bg-green-500",
+                        picked: "border-green-500 bg-green-100 ring-2 ring-green-300"
+                      },
+                      { // C - Orange
+                        border: "border-orange-300",
+                        bg: "bg-orange-50",
+                        hover: "hover:bg-orange-100",
+                        label: "bg-orange-500",
+                        picked: "border-orange-500 bg-orange-100 ring-2 ring-orange-300"
+                      },
+                      { // D - Purple
+                        border: "border-purple-300",
+                        bg: "bg-purple-50",
+                        hover: "hover:bg-purple-100",
+                        label: "bg-purple-500",
+                        picked: "border-purple-500 bg-purple-100 ring-2 ring-purple-300"
+                      }
+                    ];
+
+                    const colors = colorSchemes[idx] || colorSchemes[0];
+
                     return (
                       <li key={o.id}>
                         <button
                           onClick={() => submit(o.id)}
-                          disabled={!!picked || secondsLeft <= 0}
+                          disabled={isDisabled}
                           className={[
-                            "w-full rounded-xl border px-4 py-3 text-left shadow-sm transition",
-                            "hover:bg-indigo-50 focus:outline-none focus:ring-2 focus:ring-indigo-300",
-                            !!picked || secondsLeft <= 0 ? "cursor-not-allowed opacity-95" : "",
-                            isPicked ? "border-indigo-300 bg-indigo-50" : "border-gray-300 bg-white/90",
+                            "w-full rounded-xl border-2 px-4 py-4 text-left shadow-md transition-all duration-200 flex items-center gap-3",
+                            "focus:outline-none focus:ring-2 focus:ring-offset-2",
+                            isDisabled ? "cursor-not-allowed opacity-60" : colors.hover,
+                            isPicked ? colors.picked : `${colors.border} ${colors.bg}`,
                           ].join(" ")}
                         >
-                          {o.text}
+                          {/* Option letter badge */}
+                          <div className={`${colors.label} text-white font-bold text-sm w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 shadow-sm`}>
+                            {o.id.toUpperCase()}
+                          </div>
+
+                          {/* Option text */}
+                          <span className="flex-1 font-medium text-slate-700">
+                            {o.text}
+                          </span>
+
+                          {/* Checkmark for picked answer */}
+                          {isPicked && (
+                            <svg className="w-6 h-6 text-green-600 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                            </svg>
+                          )}
                         </button>
                       </li>
                     );
                   })}
                 </ul>
-
-                {picked && (
-                  <p className="mt-3 text-sm text-gray-600">Answer locked in ✅</p>
-                )}
               </CardBody>
             </Card>
           )}

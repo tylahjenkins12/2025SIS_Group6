@@ -2,8 +2,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { Inter } from "next/font/google";
-import { Container } from "@/components/ui";
-import { ToastProvider } from "@/components/Toast"; // 👈 import our provider
+import { ToastProvider } from "@/components/Toast";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 
@@ -23,11 +22,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <ToastProvider>
           {/* Full-width main so page sections can be edge-to-edge */}
           <main className="min-h-screen">{children}</main>
-
-          {/* Optional lightweight footer */}
-          <footer className="border-t border-slate-100 bg-white/70 py-6 text-xs text-slate-600 backdrop-blur">
-            <Container>MVP demo — no backend wired yet</Container>
-          </footer>
         </ToastProvider>
       </body>
     </html>
