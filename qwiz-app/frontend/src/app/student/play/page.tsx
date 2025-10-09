@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import type { BusEvent, LeaderboardRow, PublicMCQ, RoundResults } from "@/types";
 import { bus } from "@/lib/bus";
@@ -12,6 +12,7 @@ const OVERLAY_MS = 3500;
 
 export default function StudentPlayPage() {
   const router = useRouter();
+  const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // Use state to avoid hydration errors - only set after client mount
   const [code, setCode] = useState("");
@@ -23,6 +24,14 @@ export default function StudentPlayPage() {
     setCode(sessionStorage.getItem("mvp_code") ?? "");
     setName(sessionStorage.getItem("mvp_name") ?? "Anon");
     setMounted(true);
+
+    // Cleanup timer on unmount
+    return () => {
+      if (timerIntervalRef.current) {
+        clearInterval(timerIntervalRef.current);
+        timerIntervalRef.current = null;
+      }
+    };
   }, []);
 
   const [current, setCurrent] = useState<PublicMCQ | null>(null);
@@ -44,6 +53,27 @@ export default function StudentPlayPage() {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [hideOverlay]);
+
+  // Countdown ticker with progress bar
+  const tickCountdown = useCallback((deadlineMs: number, roundMs: number) => {
+    // Clear any existing timer first
+    if (timerIntervalRef.current) {
+      clearInterval(timerIntervalRef.current);
+      timerIntervalRef.current = null;
+    }
+
+    const update = () => {
+      const remaining = Math.max(0, deadlineMs - Date.now());
+      setSecondsLeft(Math.ceil(remaining / 1000));
+      setProgressPct(Math.max(0, Math.min(100, (remaining / roundMs) * 100)));
+      if (remaining <= 0 && timerIntervalRef.current) {
+        clearInterval(timerIntervalRef.current);
+        timerIntervalRef.current = null;
+      }
+    };
+    update();
+    timerIntervalRef.current = setInterval(update, 1000); // Changed to 1 second for smoother updates
+  }, []);
 
   // WebSocket message handler for backend communication
   const handleWebSocketMessage = useCallback((msg: any) => {
@@ -73,7 +103,7 @@ export default function StudentPlayPage() {
       setShowFullLB(false);
       tickCountdown(publicMcq.deadlineMs, publicMcq.roundMs);
 
-      // Also emit to bus for compatibility
+      // Also emit to bus for compatibility (but DON'T call tickCountdown again in bus handler)
       bus.emit({ type: "mcq_published", code, mcq: publicMcq });
     } else if (msg.type === "answer_result") {
       // Handle answer feedback from backend
@@ -91,7 +121,7 @@ export default function StudentPlayPage() {
         bus.emit({ type: "leaderboard_update", code, top: leaderboardData });
       }
     }
-  }, [code]);
+  }, [code, tickCountdown]);
 
 
   // WebSocket connection for real-time communication with backend
@@ -114,16 +144,22 @@ export default function StudentPlayPage() {
 
     const off = bus.on((e: BusEvent) => {
       if (e.type === "mcq_published" && e.code === code) {
+        // Don't call tickCountdown here - it's already called in WebSocket handler
+        // Just update the state
         setCurrent(e.mcq);
         setPicked(null);
         setResults(null);
         setShowFullLB(false);
-        tickCountdown(e.mcq.deadlineMs, e.mcq.roundMs);
       } else if (e.type === "round_results" && e.code === code) {
         setResults(e.results);
         setCurrent(null); // round ended
         setProgressPct(0);
         setSecondsLeft(0);
+        // Clear the timer when round ends
+        if (timerIntervalRef.current) {
+          clearInterval(timerIntervalRef.current);
+          timerIntervalRef.current = null;
+        }
         // flash overlay for the leaderboard
         setShowFullLB(true);
         setTimeout(() => setShowFullLB(false), OVERLAY_MS);
@@ -133,6 +169,11 @@ export default function StudentPlayPage() {
         setCurrent(null);
         setResults(null);
         setShowFullLB(false);
+        // Clear the timer when session ends
+        if (timerIntervalRef.current) {
+          clearInterval(timerIntervalRef.current);
+          timerIntervalRef.current = null;
+        }
         alert("Session ended");
       }
     });
@@ -141,18 +182,6 @@ export default function StudentPlayPage() {
       off();
     };
   }, [code]);
-
-  // Countdown ticker with progress bar
-  function tickCountdown(deadlineMs: number, roundMs: number) {
-    const update = () => {
-      const remaining = Math.max(0, deadlineMs - Date.now());
-      setSecondsLeft(Math.ceil(remaining / 1000));
-      setProgressPct(Math.max(0, Math.min(100, (remaining / roundMs) * 100)));
-      if (remaining <= 0) clearInterval(id);
-    };
-    update();
-    const id = setInterval(update, 250);
-  }
 
   // Auto-hide question when time runs out
   useEffect(() => {
