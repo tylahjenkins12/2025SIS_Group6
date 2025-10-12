@@ -14,6 +14,7 @@ class QuestionFromLLM(BaseModel):
     question_text: str
     options: List[str]
     correct_answer: str
+    explanation: str
 
 # Model for a student's answer submission.
 # This validates the data a student sends to the WebSocket endpoint.
@@ -47,6 +48,7 @@ class FirestoreQuestion(BaseModel):
     questionText: str
     options: List[str]
     correctAnswer: str
+    explanation: str
     generatedBy: str
     # Note: timestamp is a Firestore ServerTimestamp, which Pydantic doesn't handle natively.
     # We will handle this field in the service layer.

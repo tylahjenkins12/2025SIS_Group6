@@ -78,6 +78,7 @@ async def generate_question_options_for_lecturer(session_id: str, transcript_chu
                 "questionText": selected_question.questionText,
                 "options": selected_question.options,
                 "correctAnswer": selected_question.correctAnswer,
+                "explanation": selected_question.explanation,
                 "generatedBy": "AI",
                 "timestamp": datetime.now(timezone.utc),
                 "chunkId": chunk_id,
@@ -232,6 +233,7 @@ async def select_question(selection_data: LecturerQuestionSelection):
             "questionText": selected_question.questionText,
             "options": selected_question.options,
             "correctAnswer": selected_question.correctAnswer,
+            "explanation": selected_question.explanation,
             "generatedBy": "AI",
             "timestamp": datetime.now(timezone.utc),
             "chunkId": selection_data.chunk_id,
@@ -362,7 +364,8 @@ async def websocket_endpoint(websocket: WebSocket, client_type: str, session_id:
                         if question_doc.exists:
                             question_data = question_doc.to_dict()
                             correct_answer = question_data.get('correctAnswer')
-                            
+                            explanation = question_data.get('explanation', '')
+
                             # Track the answer submission
                             await analytics_service.track_answer_submitted(
                                 session_id=session_id,
@@ -372,14 +375,15 @@ async def websocket_endpoint(websocket: WebSocket, client_type: str, session_id:
                                 correct_answer=correct_answer,
                                 response_time_ms=answer_data.response_time_ms
                             )
-                            
-                            # Send confirmation back to student
+
+                            # Send confirmation back to student with explanation
                             is_correct = answer_data.selected_option == correct_answer
                             await websocket.send_json({
                                 "type": "answer_result",
                                 "question_id": answer_data.question_id,
                                 "is_correct": is_correct,
-                                "correct_answer": correct_answer
+                                "correct_answer": correct_answer,
+                                "explanation": explanation
                             })
                         else:
                             await websocket.send_json({

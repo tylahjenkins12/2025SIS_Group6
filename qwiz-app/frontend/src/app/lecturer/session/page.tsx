@@ -493,6 +493,24 @@ function LecturerSessionContent() {
             transcriptionIntervalMs={sessionConfig.transcriptionIntervalMs || (5 * 60 * 1000)}
           />
 
+          {/* 🧪 TEST: Send fake transcript (for testing without speaking) */}
+          <Button
+            variant="outline"
+            onClick={() => {
+              const testTranscript = `
+                JavaScript is a dynamic, interpreted programming language that is one of the core technologies of the web.
+                It was created by Brendan Eich in 1995 and can run both in browsers and on servers using Node.js.
+                JavaScript is event-driven and supports functional programming with first-class functions.
+                Modern JavaScript includes features like async and await for handling asynchronous operations,
+                arrow functions for concise syntax, and ES6 modules for better code organization.
+                Variables can be declared using var, let, or const keywords.
+              `.trim();
+              onTranscript(testTranscript);
+            }}
+          >
+            🧪 Test Transcript
+          </Button>
+
           <Button variant="secondary" onClick={endSession}>End session</Button>
         </div>
       </div>
