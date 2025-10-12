@@ -2,8 +2,7 @@
 
 import { useEffect, useMemo, useState, Suspense, useCallback } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import type { MCQ, LeaderboardRow, PublicMCQ, BusEvent, RoundResults } from "@/types";
-import { bus } from "@/lib/bus";
+import type { MCQ, LeaderboardRow, PublicMCQ, RoundResults } from "@/types";
 import { Card, CardBody, Button, Badge } from "@/components/ui";
 import { ColumnChart } from "@/components/Chart";
 import { MicCapture } from "@/components/MicCapture";
@@ -189,33 +188,6 @@ function LecturerSessionContent() {
     return () => clearInterval(id);
   }, [round.ticking]);
 
-  // Subscribe to bus
-  useEffect(() => {
-    if (!code) return;
-    const off = bus.on((e: BusEvent) => {
-      if (e.type === "answer_submitted" && e.code === code && round.mcq && e.mcqId === round.mcq.mcqId) {
-        setRound((r) => {
-          if (!r.mcq) return r;
-          if (Date.now() > r.deadlineMs) return r;
-          if (r.answers.some((a) => a.student === e.student)) return r;
-          return {
-            ...r,
-            answers: [
-              ...r.answers,
-              { student: e.student, optionId: e.optionId, respondedAtMs: e.respondedAtMs },
-            ],
-          };
-        });
-      }
-      if (e.type === "round_results" && e.code === code) {
-        setLastResults(e.results);
-      }
-    });
-    return () => {
-      off();
-    };
-  }, [code, round.mcq, round.deadlineMs]);
-
   const codeLabel = useMemo(() => code || "N/A", [code]);
 
   // Mic transcript handler - sends transcript chunks via WebSocket
@@ -240,9 +212,6 @@ function LecturerSessionContent() {
       } else {
         console.warn(`⚠️ [SessionPage] Cannot send - WebSocket not ready (sendWS: ${!!sendWS}, wsReady: ${wsReady})`);
       }
-
-      // Broadcast locally for any other listeners
-      bus.emit({ type: "transcript_chunk", code, text: clean, at: Date.now() } as any);
     },
     [code, sendWS, wsReady]
   );
@@ -292,7 +261,6 @@ function LecturerSessionContent() {
         deadlineMs,
         roundMs: ROUND_MS,
       };
-      bus.emit({ type: "mcq_published", code, mcq: publicMcq });
       setTimeout(finishRound, ROUND_MS + 50);
     },
     [code]
@@ -329,7 +297,6 @@ function LecturerSessionContent() {
           .map(([name, score]) => ({ name, score }))
           .sort((a, b) => b.score - a.score)
           .slice(0, 10);
-        bus.emit({ type: "leaderboard_update", code, top: sorted });
         return sorted;
       });
 
@@ -339,7 +306,7 @@ function LecturerSessionContent() {
         correctOptionId: correct,
         top: top,
       } satisfies RoundResults;
-      bus.emit({ type: "round_results", code, results });
+      setLastResults(results);
 
       return { ...r, ticking: false };
     });
@@ -347,7 +314,7 @@ function LecturerSessionContent() {
 
   function endSession() {
     if (!confirm("End session for everyone?")) return;
-    bus.emit({ type: "session_ended", code });
+    // TODO: Send WebSocket message to backend to end session
     router.push("/lecturer");
   }
 

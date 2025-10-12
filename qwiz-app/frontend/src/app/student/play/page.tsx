@@ -2,8 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
-import type { BusEvent, LeaderboardRow, PublicMCQ, RoundResults } from "@/types";
-import { bus } from "@/lib/bus";
+import type { LeaderboardRow, PublicMCQ, RoundResults } from "@/types";
 import { Card, CardBody, Button } from "@/components/ui";
 import { ColumnChart } from "@/components/Chart";
 import { useBackendWS } from "@/lib/usebackendWS";
@@ -102,9 +101,6 @@ export default function StudentPlayPage() {
       setResults(null);
       setShowFullLB(false);
       tickCountdown(publicMcq.deadlineMs, publicMcq.roundMs);
-
-      // Also emit to bus for compatibility (but DON'T call tickCountdown again in bus handler)
-      bus.emit({ type: "mcq_published", code, mcq: publicMcq });
     } else if (msg.type === "answer_result") {
       // Handle answer feedback from backend
       console.log("Answer result:", msg);
@@ -117,8 +113,6 @@ export default function StudentPlayPage() {
           score: student.score
         }));
         setTop(leaderboardData);
-        // Also emit to bus for compatibility
-        bus.emit({ type: "leaderboard_update", code, top: leaderboardData });
       }
     }
   }, [code, tickCountdown]);
@@ -137,51 +131,6 @@ export default function StudentPlayPage() {
       });
     }
   }, [wsReady, sendWS, name]);
-
-  // Subscribe to events
-  useEffect(() => {
-    if (!code) return;
-
-    const off = bus.on((e: BusEvent) => {
-      if (e.type === "mcq_published" && e.code === code) {
-        // Don't call tickCountdown here - it's already called in WebSocket handler
-        // Just update the state
-        setCurrent(e.mcq);
-        setPicked(null);
-        setResults(null);
-        setShowFullLB(false);
-      } else if (e.type === "round_results" && e.code === code) {
-        setResults(e.results);
-        setCurrent(null); // round ended
-        setProgressPct(0);
-        setSecondsLeft(0);
-        // Clear the timer when round ends
-        if (timerIntervalRef.current) {
-          clearInterval(timerIntervalRef.current);
-          timerIntervalRef.current = null;
-        }
-        // flash overlay for the leaderboard
-        setShowFullLB(true);
-        setTimeout(() => setShowFullLB(false), OVERLAY_MS);
-      } else if (e.type === "leaderboard_update" && e.code === code) {
-        setTop(e.top);
-      } else if (e.type === "session_ended" && e.code === code) {
-        setCurrent(null);
-        setResults(null);
-        setShowFullLB(false);
-        // Clear the timer when session ends
-        if (timerIntervalRef.current) {
-          clearInterval(timerIntervalRef.current);
-          timerIntervalRef.current = null;
-        }
-        alert("Session ended");
-      }
-    });
-
-    return () => {
-      off();
-    };
-  }, [code]);
 
   // Auto-hide question when time runs out
   useEffect(() => {
@@ -211,16 +160,6 @@ export default function StudentPlayPage() {
         }
       });
     }
-
-    // Also emit to bus for compatibility with existing leaderboard system
-    bus.emit({
-      type: "answer_submitted",
-      code,
-      student: name,
-      mcqId: current.mcqId,
-      optionId,
-      respondedAtMs: Date.now(),
-    });
   }
 
   function leaveSession() {

@@ -96,13 +96,25 @@ class SessionManager:
 
                     # Broadcast the new question with timing info
                     print(f"📤 Broadcasting question {serialized_question.get('id')} to students")
-                    asyncio.run(self.broadcast(session_id, {
-                        "type": "new_question",
-                        "question": serialized_question,
-                        "answerTimeSeconds": answer_time,
-                        "questionStartTime": datetime.now(timezone.utc).isoformat()
-                    }))
-                    print(f"✅ Question broadcast complete")
+                    # Get the running event loop and schedule the broadcast task
+                    try:
+                        loop = asyncio.get_running_loop()
+                        loop.create_task(self.broadcast(session_id, {
+                            "type": "new_question",
+                            "question": serialized_question,
+                            "answerTimeSeconds": answer_time,
+                            "questionStartTime": datetime.now(timezone.utc).isoformat()
+                        }))
+                        print(f"✅ Question broadcast scheduled")
+                    except RuntimeError:
+                        # No event loop running, use asyncio.run as fallback
+                        asyncio.run(self.broadcast(session_id, {
+                            "type": "new_question",
+                            "question": serialized_question,
+                            "answerTimeSeconds": answer_time,
+                            "questionStartTime": datetime.now(timezone.utc).isoformat()
+                        }))
+                        print(f"✅ Question broadcast complete")
 
         # Start the listener and store the callback in a dictionary to manage it later
         print(f"Starting Firestore listener for session {session_id}")
