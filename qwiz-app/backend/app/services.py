@@ -17,17 +17,25 @@ class SessionManager:
     """
     def __init__(self, db_client):
         self.active_sessions: Dict[str, List[WebSocket]] = {}
+        self.lecturer_connections: Dict[str, List[WebSocket]] = {}  # Track lecturer connections separately
         self.snapshot_listeners = {}
         # The db client is now passed in via dependency injection
         self.db = db_client
 
-    async def connect(self, session_id: str, websocket: WebSocket):
+    async def connect(self, session_id: str, websocket: WebSocket, client_type: str = "student"):
         """Adds a new WebSocket to an active session."""
         await websocket.accept()
         if session_id not in self.active_sessions:
             self.active_sessions[session_id] = []
         self.active_sessions[session_id].append(websocket)
-        print(f"WebSocket connected to session {session_id}")
+
+        # Track lecturer connections separately
+        if client_type == "lecturer":
+            if session_id not in self.lecturer_connections:
+                self.lecturer_connections[session_id] = []
+            self.lecturer_connections[session_id].append(websocket)
+
+        print(f"WebSocket connected to session {session_id} as {client_type}")
 
     def disconnect(self, session_id: str, websocket: WebSocket):
         """Removes a WebSocket from an active session."""
@@ -37,6 +45,13 @@ class SessionManager:
                 # If no connections left, clean up the session from memory
                 del self.active_sessions[session_id]
                 self.remove_listener(session_id)
+
+        # Also remove from lecturer connections if present
+        if session_id in self.lecturer_connections and websocket in self.lecturer_connections[session_id]:
+            self.lecturer_connections[session_id].remove(websocket)
+            if not self.lecturer_connections[session_id]:
+                del self.lecturer_connections[session_id]
+
         print(f"WebSocket disconnected from session {session_id}")
 
     async def broadcast(self, session_id: str, message: dict):
@@ -54,6 +69,22 @@ class SessionManager:
                 # Remove disconnected websockets
                 if ws in self.active_sessions[session_id]:
                     self.active_sessions[session_id].remove(ws)
+
+    async def broadcast_to_lecturers(self, session_id: str, message: dict):
+        """Broadcasts a message only to lecturer connections in a specific session."""
+        if session_id in self.lecturer_connections:
+            disconnected_websockets = []
+            for connection in self.lecturer_connections[session_id]:
+                try:
+                    await connection.send_json(message)
+                except WebSocketDisconnect:
+                    disconnected_websockets.append(connection)
+                except Exception as e:
+                    print(f"An unexpected error occurred during lecturer broadcast: {e}")
+            for ws in disconnected_websockets:
+                # Remove disconnected websockets
+                if ws in self.lecturer_connections[session_id]:
+                    self.lecturer_connections[session_id].remove(ws)
 
     def start_listener(self, session_id: str):
         """Sets up a real-time Firestore listener for a session's questions."""

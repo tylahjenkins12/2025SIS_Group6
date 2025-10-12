@@ -281,7 +281,7 @@ async def websocket_endpoint(websocket: WebSocket, client_type: str, session_id:
         return
 
     # Add the new connection to the session manager
-    await session_manager.connect(session_id, websocket)
+    await session_manager.connect(session_id, websocket, client_type)
 
     # Temporary ID until we get the student's name
     temp_student_id = f"temp_{id(websocket)}"
@@ -314,6 +314,19 @@ async def websocket_endpoint(websocket: WebSocket, client_type: str, session_id:
 
                     # Generate 3 question options for lecturer selection
                     await generate_question_options_for_lecturer(session_id, transcript_chunk)
+
+                elif message_type == "end_session":
+                    # Handle session end request from lecturer
+                    print(f"🏁 Lecturer requested to end session {session_id}")
+                    result = await analytics_service.end_session(session_id)
+                    print(f"✅ Session ended successfully: {result}")
+
+                    # Send confirmation to lecturer
+                    await websocket.send_json({
+                        "type": "session_end_confirmed",
+                        "session_id": session_id,
+                        "total_students": result.get("total_students", 0)
+                    })
 
             elif client_type == "student":
                 if message_type == "student_name":

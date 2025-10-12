@@ -40,6 +40,7 @@ export default function StudentPlayPage() {
   const [results, setResults] = useState<RoundResults | null>(null);
   const [top, setTop] = useState<LeaderboardRow[]>([]);
   const [showFullLB, setShowFullLB] = useState(false);
+  const [sessionResults, setSessionResults] = useState<any | null>(null);
 
   // helper to close overlay
   const hideOverlay = useCallback(() => setShowFullLB(false), []);
@@ -114,8 +115,32 @@ export default function StudentPlayPage() {
         }));
         setTop(leaderboardData);
       }
+    } else if (msg.type === "session_ended") {
+      // Handle session end - find this student's results
+      console.log("🏁 Session ended. All results:", msg.all_results);
+
+      // Find this student's results by name
+      if (msg.all_results) {
+        const myResults = msg.all_results[name];
+        if (myResults) {
+          console.log("📊 My results:", myResults);
+          setSessionResults(myResults);
+          // Clear current question and show results
+          setCurrent(null);
+          setPicked(null);
+          setResults(null);
+          setShowFullLB(false);
+          // Clear timer
+          if (timerIntervalRef.current) {
+            clearInterval(timerIntervalRef.current);
+            timerIntervalRef.current = null;
+          }
+        } else {
+          console.warn("⚠️ Could not find results for student:", name);
+        }
+      }
     }
-  }, [code, tickCountdown]);
+  }, [code, tickCountdown, name]);
 
 
   // WebSocket connection for real-time communication with backend
@@ -173,6 +198,96 @@ export default function StudentPlayPage() {
 
   if (!code)
     return <p className="text-red-700">No session code — go back and join.</p>;
+
+  // Session Results View (shown when session ends)
+  if (sessionResults) {
+    const rankEmoji = sessionResults.final_rank === 1 ? "🥇" : sessionResults.final_rank === 2 ? "🥈" : sessionResults.final_rank === 3 ? "🥉" : "🎯";
+
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50 px-4 pt-20 pb-12 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-4xl">
+          {/* Header */}
+          <div className="text-center mb-8">
+            <h1 className="text-4xl font-bold text-gray-900 mb-2">Session Ended</h1>
+            <p className="text-lg text-gray-600">Final Results for {sessionResults.student_name}</p>
+          </div>
+
+          {/* Rank Card */}
+          <Card className="mb-6 bg-gradient-to-r from-purple-50 to-indigo-50 border-purple-200">
+            <CardBody className="p-8 text-center">
+              <div className="text-6xl mb-4">{rankEmoji}</div>
+              <h2 className="text-3xl font-bold text-gray-900 mb-2">
+                Rank #{sessionResults.final_rank} of {sessionResults.total_students}
+              </h2>
+              <p className="text-2xl text-gray-700 mb-1">
+                Final Score: <span className="font-bold text-indigo-600">{sessionResults.final_score}</span> points
+              </p>
+              <p className="text-lg text-gray-600">
+                {sessionResults.correct_answers} / {sessionResults.total_answers} correct
+                {sessionResults.total_answers > 0 &&
+                  ` (${Math.round((sessionResults.correct_answers / sessionResults.total_answers) * 100)}%)`
+                }
+              </p>
+            </CardBody>
+          </Card>
+
+          {/* Question Results */}
+          <Card>
+            <CardBody className="p-6">
+              <h3 className="text-xl font-semibold mb-4">Question Review</h3>
+              {sessionResults.question_results && sessionResults.question_results.length > 0 ? (
+                <div className="space-y-4">
+                  {sessionResults.question_results.map((qr: any, idx: number) => (
+                    <div
+                      key={qr.question_id || idx}
+                      className={`p-4 rounded-lg border-2 ${
+                        qr.is_correct
+                          ? 'bg-green-50 border-green-200'
+                          : 'bg-red-50 border-red-200'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between mb-2">
+                        <p className="font-medium text-gray-900 flex-1">
+                          {idx + 1}. {qr.question_text}
+                        </p>
+                        <span className="text-2xl ml-2">
+                          {qr.is_correct ? '✅' : '❌'}
+                        </span>
+                      </div>
+                      <div className="text-sm space-y-1">
+                        <p className="text-gray-700">
+                          <span className="font-semibold">Your answer:</span> {qr.student_answer}
+                        </p>
+                        {!qr.is_correct && (
+                          <p className="text-gray-700">
+                            <span className="font-semibold">Correct answer:</span> {qr.correct_answer}
+                          </p>
+                        )}
+                        {qr.points_earned > 0 && (
+                          <p className="text-green-700 font-semibold">
+                            +{qr.points_earned} points
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-gray-600">No questions answered in this session.</p>
+              )}
+            </CardBody>
+          </Card>
+
+          {/* Leave Button */}
+          <div className="mt-6 text-center">
+            <Button onClick={leaveSession} variant="primary">
+              Return to Home
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // Fullscreen Leaderboard overlay
   const FullscreenLeaderboard = () => (
