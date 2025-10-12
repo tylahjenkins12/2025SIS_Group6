@@ -78,6 +78,9 @@ function LecturerSessionContent() {
     transcriptChunk: string;
   } | null>(null);
 
+  // Fullscreen code display state
+  const [showFullscreenCode, setShowFullscreenCode] = useState(false);
+
   // WebSocket message handler
   const handleWebSocketMessage = useCallback((msg: any) => {
     console.log("🔔 Received WebSocket message:", msg);
@@ -111,6 +114,16 @@ function LecturerSessionContent() {
       // Remove student from connected list
       console.log("👋 Student left:", msg);
       setConnectedStudents(prev => prev.filter(s => s.id !== msg.student_id));
+    } else if (msg.type === "leaderboard_update") {
+      // Update leaderboard from backend
+      console.log("🏆 Leaderboard update received:", msg.leaderboard);
+      if (msg.leaderboard && msg.leaderboard.students) {
+        const formattedLeaderboard = msg.leaderboard.students.map((student: any) => ({
+          name: student.student_id,
+          score: student.score
+        }));
+        setTop(formattedLeaderboard);
+      }
     }
   }, []);
 
@@ -580,6 +593,14 @@ function LecturerSessionContent() {
                   </Button>
                 </div>
                 <p className="text-xs text-slate-500">Students use this code to join</p>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => setShowFullscreenCode(true)}
+                  className="mt-2 w-full"
+                >
+                  🖥️ Enlarge
+                </Button>
               </div>
             </CardBody>
           </Card>
@@ -616,6 +637,31 @@ function LecturerSessionContent() {
           onQuestionSelect={handleQuestionSelect}
           onDismiss={handleQuestionDismiss}
         />
+      )}
+
+      {/* Fullscreen Code Display */}
+      {showFullscreenCode && (
+        <div
+          className="fixed inset-0 z-50 bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-600 flex flex-col items-center justify-center cursor-pointer"
+          onClick={() => setShowFullscreenCode(false)}
+        >
+          <div className="text-center px-8">
+            <h1 className="text-white text-4xl md:text-6xl font-bold mb-8 tracking-wide">
+              Your Qwiz code
+            </h1>
+            <div className="bg-white rounded-3xl shadow-2xl px-12 py-16 md:px-24 md:py-20 mb-8">
+              <p className="text-gray-600 text-2xl md:text-3xl font-semibold mb-4">
+                Enter Code:
+              </p>
+              <p className="text-indigo-600 text-8xl md:text-[12rem] font-mono font-black tracking-widest">
+                {codeLabel}
+              </p>
+            </div>
+            <p className="text-white/90 text-xl md:text-2xl font-medium">
+              Click anywhere to close
+            </p>
+          </div>
+        </div>
       )}
     </div>
   );
