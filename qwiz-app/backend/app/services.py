@@ -129,7 +129,7 @@ async def generate_three_questions_with_llm(transcript: str) -> List[FirestoreQu
 
     prompt = f"""Based on the following lecture transcript, generate exactly 3 different multiple-choice questions.
     Each question should be distinct and cover different aspects of the transcript content.
-    For each question, provide four distinct options, and specify the correct answer.
+    For each question, provide four distinct answer options, clearly indicate the correct answer, and include a simple, clear explanation of why it is correct. Make the explanation easy to understand and, when possible, add context or insight that goes beyond the transcript.
     Ensure all questions are directly relevant to the transcript content.
 
     Transcript:
@@ -150,7 +150,8 @@ async def generate_three_questions_with_llm(transcript: str) -> List[FirestoreQu
                             "type": "ARRAY",
                             "items": {"type": "STRING"}
                         },
-                        "correct_answer": {"type": "STRING"}
+                        "correct_answer": {"type": "STRING"},
+                        "explanation": {"type": "STRING"}
                     }
                 }
             }
@@ -182,6 +183,7 @@ async def generate_three_questions_with_llm(transcript: str) -> List[FirestoreQu
                         questionText=llm_question.question_text,
                         options=llm_question.options,
                         correctAnswer=llm_question.correct_answer,
+                        explanation=llm_question.explanation,
                         generatedBy="AI"
                     )
                     questions.append(firestore_question)
@@ -212,8 +214,8 @@ async def generate_question_with_llm(transcript: str) -> Optional[FirestoreQuest
     api_key = settings.GEMINI_API_KEY
     api_url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key={api_key}"
     
-    prompt = f"""Based on the following lecture transcript, generate a single multiple-choice question. 
-    For the question, provide four distinct options, and specify the correct answer. 
+    prompt = f"""Based on the following lecture transcript, generate a single multiple-choice question.
+    For each question, provide four distinct answer options, clearly indicate the correct answer, and include a simple, clear explanation of why it is correct. Make the explanation easy to understand and, when possible, add context or insight that goes beyond the transcript.
     Ensure the question is directly relevant to the transcript content.
 
     Transcript:
@@ -229,9 +231,10 @@ async def generate_question_with_llm(transcript: str) -> Optional[FirestoreQuest
                 "type": "ARRAY",
                 "items": {"type": "STRING"}
             },
-            "correct_answer": {"type": "STRING"}
+            "correct_answer": {"type": "STRING"},
+            "explanation": {"type": "STRING"}
         },
-        "propertyOrdering": ["question_text", "options", "correct_answer"]
+        "propertyOrdering": ["question_text", "options", "correct_answer", "explanation"]
     }
     
     payload = {
@@ -259,6 +262,7 @@ async def generate_question_with_llm(transcript: str) -> Optional[FirestoreQuest
                 questionText=llm_question.question_text,
                 options=llm_question.options,
                 correctAnswer=llm_question.correct_answer,
+                explanation=llm_question.explanation,
                 generatedBy="AI"
             )
         else:
