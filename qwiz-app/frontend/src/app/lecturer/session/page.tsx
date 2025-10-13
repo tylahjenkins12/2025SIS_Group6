@@ -2,8 +2,7 @@
 
 import { useEffect, useMemo, useState, Suspense, useCallback } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import type { MCQ, LeaderboardRow, PublicMCQ, BusEvent, RoundResults } from "@/types";
-import { bus } from "@/lib/bus";
+import type { MCQ, LeaderboardRow, PublicMCQ, RoundResults } from "@/types";
 import { Card, CardBody, Button, Badge } from "@/components/ui";
 import { ColumnChart } from "@/components/Chart";
 import { MicCapture } from "@/components/MicCapture";
@@ -81,6 +80,9 @@ function LecturerSessionContent() {
   // Fullscreen code display state
   const [showFullscreenCode, setShowFullscreenCode] = useState(false);
 
+  // Session summary state (shown after session ends)
+  const [sessionSummary, setSessionSummary] = useState<any | null>(null);
+
   // WebSocket message handler
   const handleWebSocketMessage = useCallback((msg: any) => {
     console.log("🔔 Received WebSocket message:", msg);
@@ -124,6 +126,10 @@ function LecturerSessionContent() {
         }));
         setTop(formattedLeaderboard);
       }
+    } else if (msg.type === "session_summary") {
+      // Session ended - show summary to lecturer
+      console.log("📊 Session summary received:", msg.summary);
+      setSessionSummary(msg.summary);
     }
   }, []);
 
@@ -164,7 +170,7 @@ function LecturerSessionContent() {
           });
         }
       } catch (error) {
-        console.error("🚨 Network error fetching session config:", error);
+        console.error("Network error fetching session config:", error);
         setSessionConfig({
           transcriptionIntervalMs: 5 * 60 * 1000, // 5 minutes default
           answerTime: 30,
@@ -188,33 +194,6 @@ function LecturerSessionContent() {
     const id = setInterval(() => setRound((r) => ({ ...r, now: Date.now() })), 1000);
     return () => clearInterval(id);
   }, [round.ticking]);
-
-  // Subscribe to bus
-  useEffect(() => {
-    if (!code) return;
-    const off = bus.on((e: BusEvent) => {
-      if (e.type === "answer_submitted" && e.code === code && round.mcq && e.mcqId === round.mcq.mcqId) {
-        setRound((r) => {
-          if (!r.mcq) return r;
-          if (Date.now() > r.deadlineMs) return r;
-          if (r.answers.some((a) => a.student === e.student)) return r;
-          return {
-            ...r,
-            answers: [
-              ...r.answers,
-              { student: e.student, optionId: e.optionId, respondedAtMs: e.respondedAtMs },
-            ],
-          };
-        });
-      }
-      if (e.type === "round_results" && e.code === code) {
-        setLastResults(e.results);
-      }
-    });
-    return () => {
-      off();
-    };
-  }, [code, round.mcq, round.deadlineMs]);
 
   const codeLabel = useMemo(() => code || "N/A", [code]);
 
@@ -240,9 +219,6 @@ function LecturerSessionContent() {
       } else {
         console.warn(`⚠️ [SessionPage] Cannot send - WebSocket not ready (sendWS: ${!!sendWS}, wsReady: ${wsReady})`);
       }
-
-      // Broadcast locally for any other listeners
-      bus.emit({ type: "transcript_chunk", code, text: clean, at: Date.now() } as any);
     },
     [code, sendWS, wsReady]
   );
@@ -292,7 +268,6 @@ function LecturerSessionContent() {
         deadlineMs,
         roundMs: ROUND_MS,
       };
-      bus.emit({ type: "mcq_published", code, mcq: publicMcq });
       setTimeout(finishRound, ROUND_MS + 50);
     },
     [code]
@@ -329,7 +304,6 @@ function LecturerSessionContent() {
           .map(([name, score]) => ({ name, score }))
           .sort((a, b) => b.score - a.score)
           .slice(0, 10);
-        bus.emit({ type: "leaderboard_update", code, top: sorted });
         return sorted;
       });
 
@@ -339,16 +313,23 @@ function LecturerSessionContent() {
         correctOptionId: correct,
         top: top,
       } satisfies RoundResults;
-      bus.emit({ type: "round_results", code, results });
+      setLastResults(results);
 
       return { ...r, ticking: false };
     });
   }
 
   function endSession() {
-    if (!confirm("End session for everyone?")) return;
-    bus.emit({ type: "session_ended", code });
-    router.push("/lecturer");
+    if (!confirm("End session for everyone? All students will see their final results.")) return;
+
+    // Send end session message to backend via WebSocket
+    if (sendWS && wsReady) {
+      console.log("🏁 Sending end session request to backend");
+      sendWS({ type: "end_session" });
+    }
+
+    // Don't redirect - wait for session summary to be received and displayed
+    console.log("⏳ Waiting for session summary from backend...");
   }
 
   const timeLeft = Math.max(0, round.deadlineMs - round.now);
@@ -374,6 +355,128 @@ function LecturerSessionContent() {
     );
   }
 
+  // If session has ended and we have a summary, show the summary view
+  if (sessionSummary) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50 px-4 py-6 sm:px-6 lg:px-8">
+        <div className="max-w-7xl mx-auto">
+          {/* Header */}
+          <div className="mb-8 text-center">
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">Session Summary</h1>
+            <p className="text-gray-600">Session {code} has ended</p>
+          </div>
+
+          {/* Overall Statistics */}
+          <Card className="mb-6">
+            <CardBody>
+              <h2 className="text-xl font-semibold mb-4">📊 Overall Statistics</h2>
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                <div className="text-center p-4 bg-blue-50 rounded-lg">
+                  <div className="text-2xl font-bold text-blue-600">{sessionSummary.total_students}</div>
+                  <div className="text-sm text-gray-600">Students</div>
+                </div>
+                <div className="text-center p-4 bg-green-50 rounded-lg">
+                  <div className="text-2xl font-bold text-green-600">{sessionSummary.total_questions}</div>
+                  <div className="text-sm text-gray-600">Questions</div>
+                </div>
+                <div className="text-center p-4 bg-purple-50 rounded-lg">
+                  <div className="text-2xl font-bold text-purple-600">{sessionSummary.total_answers}</div>
+                  <div className="text-sm text-gray-600">Total Answers</div>
+                </div>
+                <div className="text-center p-4 bg-yellow-50 rounded-lg">
+                  <div className="text-2xl font-bold text-yellow-600">{sessionSummary.overall_accuracy}%</div>
+                  <div className="text-sm text-gray-600">Accuracy</div>
+                </div>
+                <div className="text-center p-4 bg-pink-50 rounded-lg">
+                  <div className="text-2xl font-bold text-pink-600">
+                    {sessionSummary.avg_response_time_ms ? `${(sessionSummary.avg_response_time_ms / 1000).toFixed(1)}s` : 'N/A'}
+                  </div>
+                  <div className="text-sm text-gray-600">Avg Response</div>
+                </div>
+              </div>
+            </CardBody>
+          </Card>
+
+          {/* Student Performance */}
+          <Card className="mb-6">
+            <CardBody>
+              <h2 className="text-xl font-semibold mb-4">🏆 Student Performance</h2>
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-4 py-2 text-left text-sm font-semibold text-gray-700">Rank</th>
+                      <th className="px-4 py-2 text-left text-sm font-semibold text-gray-700">Student</th>
+                      <th className="px-4 py-2 text-right text-sm font-semibold text-gray-700">Score</th>
+                      <th className="px-4 py-2 text-right text-sm font-semibold text-gray-700">Correct</th>
+                      <th className="px-4 py-2 text-right text-sm font-semibold text-gray-700">Accuracy</th>
+                      <th className="px-4 py-2 text-right text-sm font-semibold text-gray-700">Avg Response</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-200">
+                    {sessionSummary.student_summaries.map((student: any) => (
+                      <tr key={student.student_id} className="hover:bg-gray-50">
+                        <td className="px-4 py-3">
+                          <span className="font-semibold">
+                            {student.rank === 1 && '🥇'}
+                            {student.rank === 2 && '🥈'}
+                            {student.rank === 3 && '🥉'}
+                            {student.rank > 3 && `#${student.rank}`}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 font-medium">{student.student_name}</td>
+                        <td className="px-4 py-3 text-right font-bold text-indigo-600">{student.score}</td>
+                        <td className="px-4 py-3 text-right">{student.correct_answers}/{student.total_answers}</td>
+                        <td className="px-4 py-3 text-right">{student.accuracy}%</td>
+                        <td className="px-4 py-3 text-right">
+                          {student.avg_response_time_ms ? `${(student.avg_response_time_ms / 1000).toFixed(1)}s` : 'N/A'}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </CardBody>
+          </Card>
+
+          {/* Question Breakdown */}
+          <Card className="mb-6">
+            <CardBody>
+              <h2 className="text-xl font-semibold mb-4">❓ Question Performance</h2>
+              <div className="space-y-4">
+                {sessionSummary.question_breakdown.map((question: any, idx: number) => (
+                  <div key={question.question_id} className="border rounded-lg p-4">
+                    <div className="flex justify-between items-start mb-2">
+                      <h3 className="font-semibold text-gray-900 flex-1">
+                        Q{idx + 1}: {question.question_text}
+                      </h3>
+                      <Badge
+                        variant={question.accuracy >= 70 ? "success" : question.accuracy >= 40 ? "warning" : "error"}
+                      >
+                        {question.accuracy}% correct
+                      </Badge>
+                    </div>
+                    <p className="text-sm text-gray-600 mb-2">
+                      Correct Answer: <span className="font-semibold text-green-600">{question.correct_answer}</span>
+                    </p>
+                    <p className="text-sm text-gray-500">
+                      {question.correct_attempts}/{question.total_attempts} students answered correctly
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </CardBody>
+          </Card>
+
+          {/* Return Button */}
+          <div className="text-center">
+            <Button onClick={() => router.push("/lecturer")}>Return to Home</Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50 px-4 py-6 sm:px-6 lg:px-8">
       {/* Top bar */}
@@ -389,6 +492,24 @@ function LecturerSessionContent() {
             onTranscript={onTranscript}
             transcriptionIntervalMs={sessionConfig.transcriptionIntervalMs || (5 * 60 * 1000)}
           />
+
+          {/* 🧪 TEST: Send fake transcript (for testing without speaking) */}
+          <Button
+            variant="outline"
+            onClick={() => {
+              const testTranscript = `
+                JavaScript is a dynamic, interpreted programming language that is one of the core technologies of the web.
+                It was created by Brendan Eich in 1995 and can run both in browsers and on servers using Node.js.
+                JavaScript is event-driven and supports functional programming with first-class functions.
+                Modern JavaScript includes features like async and await for handling asynchronous operations,
+                arrow functions for concise syntax, and ES6 modules for better code organization.
+                Variables can be declared using var, let, or const keywords.
+              `.trim();
+              onTranscript(testTranscript);
+            }}
+          >
+            🧪 Test Transcript
+          </Button>
 
           <Button variant="secondary" onClick={endSession}>End session</Button>
         </div>

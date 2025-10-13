@@ -18,6 +18,7 @@ const OVERLAY_MS = 3500;
 export default function StudentPlayPage() {
   const router = useRouter();
   const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const autoHideTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Use state to avoid hydration errors - only set after client mount
   const [code, setCode] = useState("");
@@ -30,11 +31,15 @@ export default function StudentPlayPage() {
     setName(sessionStorage.getItem("mvp_name") ?? "Anon");
     setMounted(true);
 
-    // Cleanup timer on unmount
+    // Cleanup timers on unmount
     return () => {
       if (timerIntervalRef.current) {
         clearInterval(timerIntervalRef.current);
         timerIntervalRef.current = null;
+      }
+      if (autoHideTimeoutRef.current) {
+        clearTimeout(autoHideTimeoutRef.current);
+        autoHideTimeoutRef.current = null;
       }
     };
   }, []);
@@ -46,6 +51,7 @@ export default function StudentPlayPage() {
   const [results, setResults] = useState<RoundResults | null>(null);
   const [top, setTop] = useState<LeaderboardRow[]>([]);
   const [showFullLB, setShowFullLB] = useState(false);
+  const [sessionResults, setSessionResults] = useState<any | null>(null);
   const [explanation, setExplanation] = useState<string>("");
   const [correctAnswer, setCorrectAnswer] = useState<string>("");
 
@@ -107,6 +113,12 @@ export default function StudentPlayPage() {
 
         console.log("✅ Question parsed. Timer:", answerTimeSeconds, "seconds");
 
+        // Clear any pending auto-hide timeout from previous question
+        if (autoHideTimeoutRef.current) {
+          clearTimeout(autoHideTimeoutRef.current);
+          autoHideTimeoutRef.current = null;
+        }
+
         setCurrent(publicMcq);
         setPicked(null);
         setResults(null);
@@ -142,9 +154,35 @@ export default function StudentPlayPage() {
           // Also emit to bus for compatibility
           bus.emit({ type: "leaderboard_update", code, top: leaderboardData });
         }
+      } else if (msg.type === "session_ended") {
+        // Handle session end - find this student's results
+        console.log("🏁 Session ended. All results:", msg.all_results);
+
+        // Find this student's results by name
+        if (msg.all_results) {
+          const myResults = msg.all_results[name];
+          if (myResults) {
+            console.log("📊 My results:", myResults);
+            setSessionResults(myResults);
+            // Clear current question and show results
+            setCurrent(null);
+            setPicked(null);
+            setResults(null);
+            setShowFullLB(false);
+            setExplanation("");
+            setCorrectAnswer("");
+            // Clear timer
+            if (timerIntervalRef.current) {
+              clearInterval(timerIntervalRef.current);
+              timerIntervalRef.current = null;
+            }
+          } else {
+            console.warn("⚠️ Could not find results for student:", name);
+          }
+        }
       }
     },
-    [code, tickCountdown]
+    [code, tickCountdown, name]
   );
 
   // WebSocket connection for real-time communication with backend
@@ -165,62 +203,24 @@ export default function StudentPlayPage() {
     }
   }, [wsReady, sendWS, name]);
 
-  // Subscribe to events
-  useEffect(() => {
-    if (!code) return;
-
-    const off = bus.on((e: BusEvent) => {
-      if (e.type === "mcq_published" && e.code === code) {
-        // Don't call tickCountdown here - it's already called in WebSocket handler
-        // Just update the state
-        setCurrent(e.mcq);
-        setPicked(null);
-        setResults(null);
-        setShowFullLB(false);
-      } else if (e.type === "round_results" && e.code === code) {
-        setResults(e.results);
-        setCurrent(null); // round ended
-        setProgressPct(0);
-        setSecondsLeft(0);
-        // Clear the timer when round ends
-        if (timerIntervalRef.current) {
-          clearInterval(timerIntervalRef.current);
-          timerIntervalRef.current = null;
-        }
-        // flash overlay for the leaderboard
-        setShowFullLB(true);
-        setTimeout(() => setShowFullLB(false), OVERLAY_MS);
-      } else if (e.type === "leaderboard_update" && e.code === code) {
-        setTop(e.top);
-      } else if (e.type === "session_ended" && e.code === code) {
-        setCurrent(null);
-        setResults(null);
-        setShowFullLB(false);
-        // Clear the timer when session ends
-        if (timerIntervalRef.current) {
-          clearInterval(timerIntervalRef.current);
-          timerIntervalRef.current = null;
-        }
-        alert("Session ended");
-      }
-    });
-
-    return () => {
-      off();
-    };
-  }, [code]);
-
   // Auto-hide question when time runs out
   useEffect(() => {
     if (current && secondsLeft <= 0) {
       // Wait 10 seconds to allow students to read the explanation, then clear the question
-      const timeout = setTimeout(() => {
+      autoHideTimeoutRef.current = setTimeout(() => {
         setCurrent(null);
         setPicked(null);
         setExplanation("");
         setCorrectAnswer("");
+        autoHideTimeoutRef.current = null;
       }, 10000); // 10 second delay before hiding
-      return () => clearTimeout(timeout);
+
+      return () => {
+        if (autoHideTimeoutRef.current) {
+          clearTimeout(autoHideTimeoutRef.current);
+          autoHideTimeoutRef.current = null;
+        }
+      };
     }
   }, [current, secondsLeft]);
 
@@ -241,16 +241,6 @@ export default function StudentPlayPage() {
         },
       });
     }
-
-    // Also emit to bus for compatibility with existing leaderboard system
-    bus.emit({
-      type: "answer_submitted",
-      code,
-      student: name,
-      mcqId: current.mcqId,
-      optionId,
-      respondedAtMs: Date.now(),
-    });
   }
 
   function leaveSession() {
@@ -264,6 +254,96 @@ export default function StudentPlayPage() {
 
   if (!code)
     return <p className="text-red-700">No session code — go back and join.</p>;
+
+  // Session Results View (shown when session ends)
+  if (sessionResults) {
+    const rankEmoji = sessionResults.final_rank === 1 ? "🥇" : sessionResults.final_rank === 2 ? "🥈" : sessionResults.final_rank === 3 ? "🥉" : "🎯";
+
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50 px-4 pt-20 pb-12 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-4xl">
+          {/* Header */}
+          <div className="text-center mb-8">
+            <h1 className="text-4xl font-bold text-gray-900 mb-2">Session Ended</h1>
+            <p className="text-lg text-gray-600">Final Results for {sessionResults.student_name}</p>
+          </div>
+
+          {/* Rank Card */}
+          <Card className="mb-6 bg-gradient-to-r from-purple-50 to-indigo-50 border-purple-200">
+            <CardBody className="p-8 text-center">
+              <div className="text-6xl mb-4">{rankEmoji}</div>
+              <h2 className="text-3xl font-bold text-gray-900 mb-2">
+                Rank #{sessionResults.final_rank} of {sessionResults.total_students}
+              </h2>
+              <p className="text-2xl text-gray-700 mb-1">
+                Final Score: <span className="font-bold text-indigo-600">{sessionResults.final_score}</span> points
+              </p>
+              <p className="text-lg text-gray-600">
+                {sessionResults.correct_answers} / {sessionResults.total_answers} correct
+                {sessionResults.total_answers > 0 &&
+                  ` (${Math.round((sessionResults.correct_answers / sessionResults.total_answers) * 100)}%)`
+                }
+              </p>
+            </CardBody>
+          </Card>
+
+          {/* Question Results */}
+          <Card>
+            <CardBody className="p-6">
+              <h3 className="text-xl font-semibold mb-4">Question Review</h3>
+              {sessionResults.question_results && sessionResults.question_results.length > 0 ? (
+                <div className="space-y-4">
+                  {sessionResults.question_results.map((qr: any, idx: number) => (
+                    <div
+                      key={qr.question_id || idx}
+                      className={`p-4 rounded-lg border-2 ${
+                        qr.is_correct
+                          ? 'bg-green-50 border-green-200'
+                          : 'bg-red-50 border-red-200'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between mb-2">
+                        <p className="font-medium text-gray-900 flex-1">
+                          {idx + 1}. {qr.question_text}
+                        </p>
+                        <span className="text-2xl ml-2">
+                          {qr.is_correct ? '✅' : '❌'}
+                        </span>
+                      </div>
+                      <div className="text-sm space-y-1">
+                        <p className="text-gray-700">
+                          <span className="font-semibold">Your answer:</span> {qr.student_answer}
+                        </p>
+                        {!qr.is_correct && (
+                          <p className="text-gray-700">
+                            <span className="font-semibold">Correct answer:</span> {qr.correct_answer}
+                          </p>
+                        )}
+                        {qr.points_earned > 0 && (
+                          <p className="text-green-700 font-semibold">
+                            +{qr.points_earned} points
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-gray-600">No questions answered in this session.</p>
+              )}
+            </CardBody>
+          </Card>
+
+          {/* Leave Button */}
+          <div className="mt-6 text-center">
+            <Button onClick={leaveSession} variant="primary">
+              Return to Home
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // Fullscreen Leaderboard overlay
   const FullscreenLeaderboard = () => (
