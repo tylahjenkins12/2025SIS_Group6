@@ -63,6 +63,8 @@ function LecturerSessionContent() {
     transcriptionIntervalMs?: number;
     answerTime?: number;
     questionReleaseMode?: "active" | "passive";
+    lecturerName?: string;
+    courseName?: string;
   }>({});
 
   // Question selection state
@@ -156,7 +158,9 @@ function LecturerSessionContent() {
           setSessionConfig({
             transcriptionIntervalMs: config.transcriptionIntervalSeconds * 1000,
             answerTime: config.answerTimeSeconds,
-            questionReleaseMode: config.questionReleaseMode
+            questionReleaseMode: config.questionReleaseMode,
+            lecturerName: config.lecturerName,
+            courseName: config.courseName
           });
           console.log("✅ Session config applied to state");
         } else {
@@ -483,7 +487,14 @@ function LecturerSessionContent() {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-6">
         <div className="flex items-center gap-3">
           <div className="text-2xl">📝</div>
-          <h2 className="text-xl font-semibold tracking-tight">Live Session</h2>
+          <div>
+            <h2 className="text-xl font-semibold tracking-tight">Live Session</h2>
+            {sessionConfig.courseName && sessionConfig.lecturerName && (
+              <p className="text-sm text-slate-500">
+                {sessionConfig.courseName} · {sessionConfig.lecturerName}
+              </p>
+            )}
+          </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
 
