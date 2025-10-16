@@ -143,7 +143,7 @@ function LecturerSessionContent() {
 
     const fetchSessionConfig = async (id: string) => {
       try {
-        const backendUrl = process.env.NEXT_PUBLIC_BACKEND_API_BASE || "http://localhost:8080";
+        const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8080";
         const configUrl = `${backendUrl}/sessions/${id}/config`;
         console.log("🔍 Attempting to fetch session config from:", configUrl);
 
@@ -226,7 +226,7 @@ function LecturerSessionContent() {
   // Question selection handlers
   const handleQuestionSelect = useCallback(async (selectedIndex: number, chunkId: string) => {
     try {
-      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_API_BASE || "http://localhost:8080";
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8080";
       const response = await fetch(`${backendUrl}/select-question`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },

@@ -8,14 +8,16 @@ COPY package*.json ./
 # Install ALL dependencies (including dev) for building
 RUN npm ci
 
-# Copy application files
+# Copy application files (including .env.production)
 COPY . .
 
-# Build the application
+# Set NODE_ENV to production so Next.js loads .env.production during build
+ENV NODE_ENV=production
+
+# Build the application (.env.production will be automatically loaded by Next.js)
 RUN npm run build
 
-# Set environment variables
-ENV NODE_ENV=production
+# Runtime environment variables already set above
 ENV PORT=3000
 ENV HOSTNAME=0.0.0.0
 

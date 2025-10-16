@@ -43,7 +43,7 @@ export default function LecturerStartPage() {
 
     setIsCreating(true);
     try {
-      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_API_BASE || "http://localhost:8080";
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8080";
       const response = await fetch(`${backendUrl}/start-session`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },

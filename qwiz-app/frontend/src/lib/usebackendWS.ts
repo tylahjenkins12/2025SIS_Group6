@@ -14,7 +14,7 @@ export function useBackendWS(
   useEffect(() => {
     if (!sessionId) return;
 
-    const base = process.env.NEXT_PUBLIC_BACKEND_WS_BASE || "http://localhost:8080";
+    const base = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8080";
     const url = new URL(`/ws/${clientType}/${sessionId}`, base);
     url.protocol = url.protocol.replace("http", "ws");
 
