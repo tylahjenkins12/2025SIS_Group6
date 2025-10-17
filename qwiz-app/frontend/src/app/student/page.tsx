@@ -3,6 +3,7 @@ import { useRouter } from "next/navigation";
 import { useState, useMemo } from "react";
 import { Card, CardBody, Button, Input } from "@/components/ui";
 import Link from "next/link";
+import { useToast } from "@/components/Toast";
 
 function generateNickname() {
   const adjectives = [
@@ -21,19 +22,60 @@ function generateNickname() {
 
 export default function StudentJoinPage() {
   const router = useRouter();
+  const { showToast } = useToast();
   const [code, setCode] = useState("");
   const [name, setName] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const cleanCode = useMemo(() => code.trim().toUpperCase(), [code]);
-  const canJoin = cleanCode.length >= 3; // tolerate 3–5 char codes
+  const canJoin = cleanCode.length >= 3 && !loading;
 
-  function join() {
-    const c = cleanCode;
-    const n = name.trim().length >= 2 ? name.trim() : generateNickname();
+  async function join() {
     if (!canJoin) return;
-    sessionStorage.setItem("mvp_code", c);
-    sessionStorage.setItem("mvp_name", n);
-    router.push("/student/play");
+
+    const sessionCode = cleanCode;
+    const studentName = name.trim().length >= 2 ? name.trim() : generateNickname();
+
+    setLoading(true);
+    try {
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8080";
+
+      // Validate session exists
+      const configResponse = await fetch(`${backendUrl}/sessions/${sessionCode}/config`);
+
+      if (configResponse.status === 404) {
+        showToast("❌ Session not found. Please check the code.", "error");
+        setLoading(false);
+        return;
+      }
+
+      if (!configResponse.ok) {
+        showToast("❌ Unable to connect. Please try again.", "error");
+        setLoading(false);
+        return;
+      }
+
+      // Check for duplicate username
+      const leaderboardResponse = await fetch(`${backendUrl}/sessions/${sessionCode}/leaderboard`);
+      if (leaderboardResponse.ok) {
+        const leaderboardData = await leaderboardResponse.json();
+        const existingNames = leaderboardData.leaderboard?.students?.map((s: any) => s.student_id) || [];
+
+        if (existingNames.includes(studentName)) {
+          showToast("❌ Username already taken. Please choose a different name.", "error");
+          setLoading(false);
+          return;
+        }
+      }
+
+      // Valid session with unique name - join it
+      sessionStorage.setItem("mvp_code", sessionCode);
+      sessionStorage.setItem("mvp_name", studentName);
+      router.push("/student/play");
+    } catch (error) {
+      showToast("❌ Connection error. Check your internet.", "error");
+      setLoading(false);
+    }
   }
 
   return (
@@ -93,9 +135,8 @@ export default function StudentJoinPage() {
                 <Button
                   onClick={join}
                   disabled={!canJoin}
-                  aria-disabled={!canJoin}
                 >
-                  🚀 Join now
+                  {loading ? "Joining..." : "🚀 Join now"}
                 </Button>
               </div>
 

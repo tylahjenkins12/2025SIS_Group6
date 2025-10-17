@@ -17,6 +17,9 @@ export default function HomePage() {
 
           {/* Desktop nav */}
           <nav className="hidden items-center gap-6 text-sm text-slate-600 sm:flex">
+            <Link href="/" className="hover:text-slate-900">
+              Home
+            </Link>
             <Link href="/about" className="hover:text-slate-900">
               About
             </Link>
@@ -37,6 +40,9 @@ export default function HomePage() {
               Menu
             </summary>
             <div className="absolute right-0 mt-2 w-48 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-lg">
+              <Link href="/" className="block px-4 py-2 text-sm hover:bg-slate-50">
+                Home
+              </Link>
               <Link href="/about" className="block px-4 py-2 text-sm hover:bg-slate-50">
                 About
               </Link>
@@ -74,12 +80,12 @@ export default function HomePage() {
             </p>
 
             <div className="mt-10 flex flex-col sm:flex-row gap-4 justify-center">
-              <Button asChild size="lg" className="text-base px-8 py-3">
+              <Button asChild className="text-base px-8 py-3">
                 <Link href="/lecturer">
                   🎓 Start Teaching
                 </Link>
               </Button>
-              <Button variant="secondary" asChild size="lg" className="text-base px-8 py-3">
+              <Button variant="secondary" asChild className="text-base px-8 py-3">
                 <Link href="/student">
                   📚 Join Session
                 </Link>
@@ -182,12 +188,12 @@ export default function HomePage() {
             Ready to get started?
           </h2>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Button asChild size="lg" className="bg-white text-indigo-600 hover:bg-gray-50 text-base px-8 py-3">
+            <Button asChild className="bg-white text-indigo-600 hover:bg-gray-50 text-base px-8 py-3">
               <Link href="/lecturer">
                 Create Session
               </Link>
             </Button>
-            <Button variant="outline" asChild size="lg" className="border-white text-white hover:bg-white hover:text-indigo-600 text-base px-8 py-3">
+            <Button variant="secondary" asChild className="border-white text-white hover:bg-white hover:text-indigo-600 text-base px-8 py-3">
               <Link href="/student">
                 Join Session
               </Link>
