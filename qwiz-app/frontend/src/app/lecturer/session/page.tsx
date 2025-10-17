@@ -450,9 +450,7 @@ function LecturerSessionContent() {
                       <h3 className="font-semibold text-gray-900 flex-1">
                         Q{idx + 1}: {question.question_text}
                       </h3>
-                      <Badge
-                        variant={question.accuracy >= 70 ? "success" : question.accuracy >= 40 ? "warning" : "error"}
-                      >
+                      <Badge>
                         {question.accuracy}% correct
                       </Badge>
                     </div>
@@ -495,7 +493,7 @@ function LecturerSessionContent() {
 
           {/* 🧪 TEST: Send fake transcript (for testing without speaking) */}
           <Button
-            variant="outline"
+            variant="secondary"
             onClick={() => {
               const testTranscript = `
                 JavaScript is a dynamic, interpreted programming language that is one of the core technologies of the web.
@@ -640,12 +638,12 @@ function LecturerSessionContent() {
               <div className="flex items-center justify-between mb-3">
                 <h3 className="text-lg font-semibold flex items-center gap-2">
                   🎤 Live Transcription
-                  <Badge variant={wsReady ? "default" : "secondary"} className="ml-2">
+                  <Badge className="ml-2">
                     {wsReady ? "🟢 Connected" : "🔴 Connecting"}
                   </Badge>
                 </h3>
                 {transcript && (
-                  <Button variant="ghost" size="sm" onClick={() => setTranscript("")}>
+                  <Button variant="ghost" onClick={() => setTranscript("")}>
                     Clear
                   </Button>
                 )}
@@ -709,14 +707,13 @@ function LecturerSessionContent() {
                 <h3 className="text-sm font-semibold text-slate-700">Join Session</h3>
                 <div className="flex items-center gap-3">
                   <span className="text-2xl font-mono font-bold text-indigo-600 tracking-wider">{codeLabel}</span>
-                  <Button variant="ghost" size="sm" onClick={copyCode} className="p-2 h-8 w-8 text-slate-500 hover:text-slate-700">
+                  <Button variant="ghost" onClick={copyCode} className="p-2 h-8 w-8 text-slate-500 hover:text-slate-700">
                     📋
                   </Button>
                 </div>
                 <p className="text-xs text-slate-500">Students use this code to join</p>
                 <Button
                   variant="secondary"
-                  size="sm"
                   onClick={() => setShowFullscreenCode(true)}
                   className="mt-2 w-full"
                 >

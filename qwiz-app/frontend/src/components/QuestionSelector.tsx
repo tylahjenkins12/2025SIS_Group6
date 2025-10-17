@@ -55,7 +55,6 @@ export function QuestionSelector({
                 onClick={onDismiss}
                 className="text-slate-400 hover:text-slate-600 hover:bg-slate-100"
                 variant="ghost"
-                size="sm"
               >
                 ✕
               </Button>
@@ -145,7 +144,7 @@ export function QuestionSelector({
                 )}
               </div>
               <div className="flex gap-3">
-                <Button onClick={onDismiss} variant="outline" className="px-6">
+                <Button onClick={onDismiss} variant="secondary" className="px-6">
                   Cancel
                 </Button>
                 <Button
