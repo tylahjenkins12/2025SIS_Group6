@@ -54,6 +54,7 @@ export default function StudentPlayPage() {
   const [sessionResults, setSessionResults] = useState<any | null>(null);
   const [explanation, setExplanation] = useState<string>("");
   const [correctAnswer, setCorrectAnswer] = useState<string>("");
+  const [sessionInfo, setSessionInfo] = useState<{lecturerName: string; courseName: string} | null>(null);
 
   // helper to close overlay
   const hideOverlay = useCallback(() => setShowFullLB(false), []);
@@ -202,6 +203,41 @@ export default function StudentPlayPage() {
       });
     }
   }, [wsReady, sendWS, name]);
+
+  // Fetch session info (lecturer name, course name)
+  useEffect(() => {
+    if (!code) return;
+
+    const fetchSessionInfo = async () => {
+      try {
+        const backendUrl = process.env.NEXT_PUBLIC_BACKEND_API_BASE || "http://localhost:8080";
+        console.log("🔍 Fetching session info for code:", code);
+        console.log("🔗 Backend URL:", `${backendUrl}/sessions/${code}/config`);
+
+        const response = await fetch(`${backendUrl}/sessions/${code}/config`);
+        console.log("📡 Response status:", response.status);
+
+        if (response.ok) {
+          const data = await response.json();
+          console.log("📦 Session config data:", data);
+          setSessionInfo({
+            lecturerName: data.lecturerName || "Unknown",
+            courseName: data.courseName || "Unknown Course"
+          });
+          console.log("✅ Session info set:", {
+            lecturerName: data.lecturerName || "Unknown",
+            courseName: data.courseName || "Unknown Course"
+          });
+        } else {
+          console.error("❌ Response not OK:", response.status, response.statusText);
+        }
+      } catch (error) {
+        console.error("Failed to fetch session info:", error);
+      }
+    };
+
+    fetchSessionInfo();
+  }, [code]);
 
   // Auto-hide question when time runs out
   useEffect(() => {
@@ -421,8 +457,17 @@ export default function StudentPlayPage() {
 
       {/* Top bar: identity + leave */}
       <div className="mb-4 flex items-center justify-between">
-        <div className="rounded-xl border border-slate-200 bg-white/80 px-4 py-2 text-sm text-slate-700 shadow-sm">
-          You are <b>{name}</b> in session <b>{code}</b>
+        <div className="rounded-xl border border-slate-200 bg-white/80 px-4 py-3 text-sm text-slate-700 shadow-sm">
+          <div className="flex flex-col gap-1">
+            <div>
+              You are <b>{name}</b> in session <b>{code}</b>
+            </div>
+            {sessionInfo && (
+              <div className="text-xs text-slate-500">
+                {sessionInfo.courseName} · Lecturer: {sessionInfo.lecturerName}
+              </div>
+            )}
+          </div>
         </div>
         <Button variant="secondary" onClick={leaveSession}>
           Leave session
