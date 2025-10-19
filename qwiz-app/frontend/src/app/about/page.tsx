@@ -19,6 +19,9 @@ export default function AboutPage() {
             <Link href="/" className="hover:text-slate-900">
               Home
             </Link>
+            <Link href="/about" className="hover:text-slate-900">
+              About
+            </Link>
             <Link href="/lecturer" className="hover:text-slate-900">
               Start Session
             </Link>
@@ -185,7 +188,7 @@ export default function AboutPage() {
           <CardBody className="p-0">
             <PreviewMock duration={20} />
             <div className="px-4 py-3 text-sm text-slate-600 sm:px-6">
-              Live leaderboard and instant insights for lecturers.
+              Questions generated based in real time to make lectures engaging.
             </div>
           </CardBody>
         </Card>
@@ -264,10 +267,10 @@ export default function AboutPage() {
             has a voice. Your students are waiting to engage—let's give them that chance! 🌟
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Button asChild size="lg" className="text-base px-8 py-3">
+            <Button asChild className="text-base px-8 py-3">
               <Link href="/lecturer">Start Your First Session</Link>
             </Button>
-            <Button variant="secondary" asChild size="lg" className="text-base px-8 py-3">
+            <Button variant="secondary" asChild className="text-base px-8 py-3">
               <Link href="/student">Experience It as a Student</Link>
             </Button>
           </div>
