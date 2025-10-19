@@ -9,7 +9,7 @@ import type {
   RoundResults,
 } from "@/types";
 import { bus } from "@/lib/bus";
-import { Card, CardBody, Button } from "@/components/ui";
+import { Card, CardBody, Button, ConfirmDialog } from "@/components/ui";
 import { ColumnChart } from "@/components/Chart";
 import { useBackendWS } from "@/lib/usebackendWS";
 
@@ -55,6 +55,7 @@ export default function StudentPlayPage() {
   const [explanation, setExplanation] = useState<string>("");
   const [correctAnswer, setCorrectAnswer] = useState<string>("");
   const [sessionInfo, setSessionInfo] = useState<{lecturerName: string; courseName: string} | null>(null);
+  const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
 
   // helper to close overlay
   const hideOverlay = useCallback(() => setShowFullLB(false), []);
@@ -279,8 +280,7 @@ export default function StudentPlayPage() {
     }
   }
 
-  function leaveSession() {
-    if (!confirm("Leave this session? You can rejoin with the code.")) return;
+  function handleLeaveConfirm() {
     try {
       sessionStorage.removeItem("mvp_code");
       sessionStorage.removeItem("mvp_name");
@@ -372,7 +372,7 @@ export default function StudentPlayPage() {
 
           {/* Leave Button */}
           <div className="mt-6 text-center">
-            <Button onClick={leaveSession} variant="primary">
+            <Button onClick={() => setShowLeaveConfirm(true)} variant="primary">
               Return to Home
             </Button>
           </div>
@@ -469,7 +469,7 @@ export default function StudentPlayPage() {
             )}
           </div>
         </div>
-        <Button variant="secondary" onClick={leaveSession}>
+        <Button variant="secondary" onClick={() => setShowLeaveConfirm(true)}>
           Leave session
         </Button>
       </div>
@@ -779,6 +779,18 @@ export default function StudentPlayPage() {
           </Card>
         </div>
       </section>
+
+      {/* Leave Session Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={showLeaveConfirm}
+        onClose={() => setShowLeaveConfirm(false)}
+        onConfirm={handleLeaveConfirm}
+        title="Leave Session?"
+        message="Are you sure you want to leave this session? You can rejoin anytime using the session code."
+        confirmText="Leave Session"
+        cancelText="Stay"
+        variant="warning"
+      />
     </div>
   );
 }
