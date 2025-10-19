@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState, Suspense, useCallback } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import type { MCQ, LeaderboardRow, PublicMCQ, RoundResults } from "@/types";
-import { Card, CardBody, Button, Badge } from "@/components/ui";
+import { Card, CardBody, Button, Badge, ConfirmDialog } from "@/components/ui";
 import { ColumnChart } from "@/components/Chart";
 import { MicCapture } from "@/components/MicCapture";
 import { QuestionSelector } from "@/components/QuestionSelector";
@@ -84,6 +84,9 @@ function LecturerSessionContent() {
 
   // Session summary state (shown after session ends)
   const [sessionSummary, setSessionSummary] = useState<any | null>(null);
+
+  // Confirmation dialog state
+  const [showEndConfirm, setShowEndConfirm] = useState(false);
 
   // WebSocket message handler
   const handleWebSocketMessage = useCallback((msg: any) => {
@@ -323,9 +326,7 @@ function LecturerSessionContent() {
     });
   }
 
-  function endSession() {
-    if (!confirm("End session for everyone? All students will see their final results.")) return;
-
+  function handleEndSessionConfirm() {
     // Send end session message to backend via WebSocket
     if (sendWS && wsReady) {
       console.log("🏁 Sending end session request to backend");
@@ -520,7 +521,7 @@ function LecturerSessionContent() {
             🧪 Test Transcript
           </Button>
 
-          <Button variant="secondary" onClick={endSession}>End session</Button>
+          <Button variant="secondary" onClick={() => setShowEndConfirm(true)}>End session</Button>
         </div>
       </div>
 
@@ -649,7 +650,7 @@ function LecturerSessionContent() {
               <div className="flex items-center justify-between mb-3">
                 <h3 className="text-lg font-semibold flex items-center gap-2">
                   🎤 Live Transcription
-                  <Badge className="ml-2">
+                  <Badge variant={wsReady ? "success" : "default"} className="ml-2">
                     {wsReady ? "🟢 Connected" : "🔴 Connecting"}
                   </Badge>
                 </h3>
@@ -792,6 +793,18 @@ function LecturerSessionContent() {
           </div>
         </div>
       )}
+
+      {/* End Session Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={showEndConfirm}
+        onClose={() => setShowEndConfirm(false)}
+        onConfirm={handleEndSessionConfirm}
+        title="End Session?"
+        message="Are you sure you want to end this session for everyone? All students will see their final results and the session will be closed."
+        confirmText="End Session"
+        cancelText="Continue Session"
+        variant="danger"
+      />
     </div>
   );
 }
