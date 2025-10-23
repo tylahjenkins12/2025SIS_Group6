@@ -12,7 +12,7 @@ on:
 
 jobs:
   frontend-lint:
-    name: Frontend - CI / Linting (pull_request)
+    name: Frontend - CI / Linting
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -36,7 +36,7 @@ jobs:
         run: npm run lint
 
   frontend-tests:
-    name: Frontend - CI / Unit Tests & Build (pull_request)
+    name: Frontend - CI / Unit Tests & Build
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -63,7 +63,7 @@ jobs:
         run: npm run build
 
   backend-lint:
-    name: Backend - CI / Linting (pull_request)
+    name: Backend - CI / Linting
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -90,7 +90,7 @@ jobs:
           black --check --line-length=120 app
 
   backend-tests:
-    name: Backend - CI / Unit Tests (pull_request)
+    name: Backend - CI / Unit Tests
     runs-on: ubuntu-latest
     defaults:
       run:
