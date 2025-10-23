@@ -25,8 +25,8 @@ class LecturerQuestionSelection(BaseModel):
 class SessionCreate(BaseModel):
     lecturer_name: str
     course_name: str
-    answer_time_seconds: Literal[20, 30, 45, 60, 90] = Field(default=30)
-    transcription_interval_minutes: Literal[0.33, 5, 7, 9, 12] = Field(default=5)
+    answer_time_seconds: Literal[30, 45, 60, 90] = Field(default=30)
+    transcription_interval_minutes: Literal[5, 7, 9, 12] = Field(default=5)
     question_release_mode: Literal["active", "passive"] = Field(default="active")
 
 class FirestoreQuestion(BaseModel):

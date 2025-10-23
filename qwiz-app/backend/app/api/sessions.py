@@ -23,7 +23,7 @@ session_start_times = {}
 question_options_cache = {}
 
 # Default constants
-MIN_TRANSCRIPT_LENGTH = 20  # Reduced for testing with 20-second intervals
+MIN_TRANSCRIPT_LENGTH = 20
 
 def generate_short_session_code() -> str:
     """Generate a short 6-character session code (alphanumeric, uppercase)."""
