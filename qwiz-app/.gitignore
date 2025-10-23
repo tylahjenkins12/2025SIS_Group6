@@ -1,19 +1,34 @@
-# Environment variables (sensitive data)
+# Environment variables
 .env
+.env.local
 
-# Python backend
+# Python
 __pycache__/
 *.pyc
+*.pyo
 venv/
 .venv/
+*.egg-info/
 
-# Node.js frontend
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Node.js
 node_modules/
 .next/
+*.log
 
-# IDE files
+# IDE
 .vscode/
 .idea/
+*.swp
 
-# OS files
+# OS
 .DS_Store
+Thumbs.db
+
+# Build artifacts
+dist/
+build/

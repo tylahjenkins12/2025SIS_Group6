@@ -7,7 +7,7 @@ Academic project for Software Innovation Studio course. An AI-powered real-time 
 ### Project Overview
 
 Qwiz transforms traditional lectures into interactive learning experiences by:
-- Automatically generating quiz questions from lecture content using AI
+- Automatically generating quiz questions from lecture transcriptions using AI
 - Enabling real-time student participation through unique session codes
 - Providing instant feedback and competitive leaderboards
 - Giving lecturers analytics on student comprehension
@@ -17,26 +17,28 @@ Qwiz transforms traditional lectures into interactive learning experiences by:
 ```
 2025SIS_Group6/
 ├── qwiz-app/           # Main application
-│   ├── backend/        # FastAPI Python server
-│   ├── frontend/       # Next.js React app
-│   └── README.md       # Detailed technical documentation
+│   ├── backend/          # FastAPI Python server
+│   ├── frontend/         # Next.js React app
+│   └── README.md         # Detailed technical documentation
 ├── documentation/      # Project documentation
-│   └── mvp/           # MVP planning and design docs
-└── README.md          # This file
+│   └── mvp/              # MVP planning and design docs
+│   └── database/         # MVP planning and design docs
+│   └── architecture/     # MVP planning and design docs
+└── README.md           # This file
 ```
 
 ### Technology Stack
 
 - **Frontend:** Next.js 15, TypeScript, Tailwind CSS
 - **Backend:** FastAPI (Python 3.11), WebSockets
-- **Database:** Google Firestore
+- **Database:** Google FireStore
 - **AI:** Google Gemini API
-- **Deployment:** Google Cloud Run, Docker
+- **Deployment:** Google Cloud Run, & Docker
 
 ### Documentation
 
 - **Technical Setup & Deployment:** See [qwiz-app/README.md](qwiz-app/README.md)
-- **Project Planning:** See [documentation/mvp/](documentation/mvp/)
+- **Project Planning:** See [documentation/](documentation/)
 - **API Documentation:** Run the app and visit http://localhost:8080/docs
 
 ### Team Members (Group 6)
@@ -44,6 +46,7 @@ Qwiz transforms traditional lectures into interactive learning experiences by:
 - Tylah Jenkins
 - Georgia Gamble
 - Roy Jacobs 
+- Chantel Mills
 - Safa Rawoot
 - Shahneela Ahmed 
 

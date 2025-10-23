@@ -211,7 +211,7 @@ export default function StudentPlayPage() {
 
     const fetchSessionInfo = async () => {
       try {
-        const backendUrl = process.env.NEXT_PUBLIC_BACKEND_API_BASE || "http://localhost:8080";
+        const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8080";
         console.log("🔍 Fetching session info for code:", code);
         console.log("🔗 Backend URL:", `${backendUrl}/sessions/${code}/config`);
 

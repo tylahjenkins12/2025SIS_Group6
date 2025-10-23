@@ -44,7 +44,9 @@ Qwiz App enhances lecture engagement by automatically generating quiz questions 
 qwiz-app/
 ├── backend/              # FastAPI Python server
 │   ├── app/             # Application code
+│   ├── tests/           # Backend test scripts 
 │   ├── Dockerfile       # Backend container
+│   └── run_local.py     # entrypoint
 │   └── requirements.txt # Python dependencies
 ├── frontend/            # Next.js React app  
 │   ├── src/            # Source code
@@ -53,6 +55,7 @@ qwiz-app/
 ├── .env                # Environment configuration (create from .env.example)
 ├── .env.example        # Template for environment variables
 ├── docker-compose.yml  # Local development orchestration
+|── LOCAL_SETUP.md     # Setup process file
 └── README.md          # This file
 ```
 
@@ -64,87 +67,17 @@ qwiz-app/
 - Node.js 18+ (for local frontend development)
 - Python 3.11+ (for local backend development)
 
+### Project best practices 
+Reference to git good resource website, reference PR template, and explicitly mention specific code qualities and standards 
 
-### Daily Git Workflow 
 
-1. Update local main branch:
-`git fetch origin && git checkout main && git pull origin main`
 
-2. Create/switch to your branch:
-`checkout -b your-feature-name`    # Create new branch
-`git checkout your-feature-name`       # OR switch to existing branch
+## Deployment to the Production Environment
+This deployment process leverages GCP and its apps for best practice deployment practices, Cloud Build to build the containers which are then saved to Artefacts which are then used as the source for the Cloud Run service deployment and hosting. 
 
-3. Make changes, then commit:
-`git add .`
-`git commit -m "Descriptive commit message"`
+**⚠️ Important**: Deploy backend first, then frontend (frontend depends on backend URL)
 
-**Switch back and rebase**
-`git rebase main`
-
-**If conflicts occur: resolve in editor, then**
-`git add . && git rebase --continue`
-
-**Force push when complete**
-`git push --force-with-lease origin your-feature-name`
-
-4. Create Pull Request on GitHub
-
-### Environment Setup
-
-1. **Copy the environment template**:
-```bash
-cp .env.example .env
-```
-
-2. **Edit `.env` file with your configuration**:
-- Add your Gemini API key (accessed via Google Cloud Secrets)
-- Update the HOST_GCLOUD_PATH to your local gcloud config directory
-- Keep QWIZ_API_URL as http://localhost:8080 for local development or switch to using the production backend
-
-### Run with Docker Compose
-
-```bash
-# Build and start both services
-docker-compose up --build
-
-# Or run in detached mode
-docker-compose up -d --build
-```
-
-Access the services:
-- Frontend: http://localhost:3000
-- Backend API: http://localhost:8080
-- API Documentation: http://localhost:8080/docs
-
-### Individual Development (Without Docker)
-
-**Backend**:
-```bash
-cd backend
-
-# Create and activate virtual environment
-python3 -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-
-# Install dependencies
-pip install -r requirements.txt
-
-# Run the development server
-uvicorn app.main:app --reload --port 8080    
-```
-
-**Frontend**:
-```bash
-cd frontend
-npm install
-npm run dev
-```
-
-## Google Cloud Authentication
-
-The application uses Application Default Credentials (ADC) for Google Cloud services:
-
-### Local Development
+### Prerequisites
 ```bash
 # Authenticate with Google Cloud
 gcloud auth application-default login
@@ -152,12 +85,6 @@ gcloud auth application-default login
 # Set your project
 gcloud config set project software-innovation-studio-6
 ```
-
-This creates credentials at `~/.config/gcloud/application_default_credentials.json` which are automatically mounted in Docker containers via the volume mapping in docker-compose.yml.
-
-## Deployment to Production
-
-**⚠️ Important**: Deploy backend first, then frontend (frontend depends on backend URL)
 
 ### 1. Deploy Backend to Cloud Run
 ```bash
@@ -168,11 +95,10 @@ gcloud run deploy qwiz-backend \
   --platform managed \
   --region us-central1 \
   --allow-unauthenticated \
-  --set-secrets=GEMINI_API_KEY=GEMINI_API_KEY:latest \
-  --env-vars-file ../env.yaml
+  --set-secrets=GEMINI_API_KEY=GEMINI_API_KEY:latest
 ```
 
-### 2. Deploy Frontend to Cloud Run  
+### 2. Deploy Frontend to Cloud Run
 ```bash
 cd frontend
 
@@ -181,36 +107,40 @@ gcloud run deploy qwiz-frontend \
   --platform managed \
   --region us-central1 \
   --allow-unauthenticated \
-  --port 3000
-  --env-vars-file ../env.yaml
+  --port 3000 \
+  --set-env-vars NEXT_PUBLIC_BACKEND_URL=https://qwiz-backend-303494497673.us-central1.run.app
 ```
 
-### Docker Individual Containers
-```bash
-# Build images
-docker build -t qwiz-backend ./backend
-docker build -t qwiz-frontend ./frontend
-```
+After deployment, Cloud Run provides URLs for both services. Update `NEXT_PUBLIC_BACKEND_URL` if the backend URL changes.
+
+
 
 ## Testing
 
-### Backend API Testing
+### Backend Tests
+
+Comprehensive pytest-based test suite covering all backend logic:
+
 ```bash
-# Health check
-curl http://localhost:8080/
-
-# Create session
-curl -X POST http://localhost:8080/start-session
-
-# WebSocket testing with wscat
-wscat -c ws://localhost:8080/ws/lecturer/{session-id}
-wscat -c ws://localhost:8080/ws/student/{session-id}
+cd backend
+source venv/bin/activate
+pip install -r requirements.txt
+pytest
 ```
 
-### Frontend Testing
-- Navigate to http://localhost:3000
-- Test lecturer flow: `/lecturer` → create session → manage questions
-- Test student flow: `/student` → join with code → answer questions
+**Test Coverage:**
+- API endpoints (sessions, questions, answers, leaderboard)
+- WebSocket connections and real-time messaging
+- Gemini AI question generation
+- Firestore database operations
+- Analytics and scoring calculations
+- Error handling and edge cases
+
+See [backend/README.md](backend/README.md#testing) for detailed testing documentation.
+
+### Frontend Tests
+
+Frontend testing to be implemented. Current focus is on backend test coverage for core business logic.
 
 ## Development
 
