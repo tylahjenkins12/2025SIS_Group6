@@ -1,10 +1,10 @@
-# Qwiz App Frontend
+# Qwiz Frontend
 
-Interactive real-time quiz application frontend built with Next.js for the Software Innovation Studio project at UTS.
+Interactive real-time quiz application frontend built with Next.js for live lecture engagement.
 
-## 🎯 Overview
+## Overview
 
-The frontend provides an intuitive interface for both lecturers and students to participate in live quiz sessions. Lecturers can create and manage quiz sessions, while students can join sessions and answer questions in real-time with live scoring.
+The frontend provides interfaces for both lecturers and students to participate in live quiz sessions with real-time updates via WebSocket connections.
 
 ### Key Features
 - **Real-time Quiz Interface**: Live question display with countdown timers
@@ -12,27 +12,48 @@ The frontend provides an intuitive interface for both lecturers and students to 
 - **Lecturer Dashboard**: Manage quiz questions and monitor student responses
 - **Live Leaderboard**: Real-time score tracking and rankings
 - **Results Visualization**: Interactive charts showing answer distributions
-- **Cross-tab Synchronization**: Events sync across multiple browser tabs
+- **WebSocket Communication**: Real-time updates from backend
 
-## 🏗️ Architecture
+## Local Development Setup
 
-### Tech Stack
-- **Framework**: Next.js 15 with App Router
-- **Language**: TypeScript
-- **Styling**: Tailwind CSS 3
-- **State Management**: React hooks + local event bus
-- **Real-time Communication**: BroadcastChannel API / localStorage fallback
-- **Build**: Standalone output for Docker deployment
+**See [LOCAL_SETUP.md](../LOCAL_SETUP.md)** for complete setup instructions.
 
-### Project Structure
+### Quick Start
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+Frontend runs at http://localhost:3000
+
+**Routes:**
+- `/` - Home page
+- `/lecturer` - Lecturer session creation
+- `/lecturer/session` - Lecturer session management
+- `/student` - Student session join
+- `/student/play` - Student quiz interface
+
+## Tech Stack
+
+- **Framework:** Next.js 15 with App Router
+- **Language:** TypeScript
+- **Styling:** Tailwind CSS 3
+- **State Management:** React hooks
+- **Real-time:** WebSocket connections to backend
+- **Deployment:** Docker + Google Cloud Run
+
+## Project Structure
+
 ```
 src/
 ├── app/                    # Next.js App Router pages
 │   ├── lecturer/          # Lecturer interface
 │   │   ├── page.tsx      # Session creation
 │   │   └── session/      # Session management
-│   ├── student/          # Student interface  
-│   │   ├── page.tsx     # Session joining
+│   ├── student/          # Student interface
+│   │   ├── page.tsx     # Session join
 │   │   └── play/        # Quiz participation
 │   ├── layout.tsx       # Root layout
 │   └── globals.css      # Global styles
@@ -40,84 +61,85 @@ src/
 │   ├── Chart.tsx       # Data visualization
 │   └── ui.tsx          # UI primitives
 ├── lib/
-│   └── bus.ts          # Event bus for real-time communication
+│   └── usebackendWS.ts # WebSocket hook for backend connection
 └── types.ts            # TypeScript definitions
 ```
 
-### Event System
+## Available Scripts
 
-## 🚀 Development
-
-### Prerequisites
-- Node.js 18+
-- npm/yarn/pnpm
-
-### Getting Started
-
-this can reference local setup but should show something? maybe where to access frontend?
-<!-- 
-1. **Install dependencies**
-   ```bash
-   npm install
-   ```
-
-2. **Run development server**
-   ```bash
-   npm run dev
-   ```
-   
-3. **Open application**
-   - Navigate to [http://localhost:3000](http://localhost:3000)
-   - Lecturer interface: `/lecturer`
-   - Student interface: `/student`
-
-### Available Scripts
 ```bash
-npm run dev      # Start development server
-npm run build    # Build for production
-npm run start    # Start production server
-npm run lint     # Run ESLint
-``` -->
+npm run dev            # Start development server (http://localhost:3000)
+npm run build          # Build for production
+npm run start          # Start production server
+npm run lint           # Run ESLint
+npm test               # Run tests
+npm run test:watch     # Run tests in watch mode
+npm run test:coverage  # Generate coverage report
+```
 
+## Configuration Files
 
-## 🔧 Configuration Files
-- **`next.config.ts`**: Next.js configuration with standalone output
-- **`tailwind.config.js`**: Tailwind CSS customization
-- **`tsconfig.json`**: TypeScript compiler settings
-- **`postcss.config.mjs`**: PostCSS processing for Tailwind
-- **`eslint.config.mjs`**: Code linting rules
+- **`next.config.ts`** - Next.js configuration
+- **`tailwind.config.js`** - Tailwind CSS customization
+- **`postcss.config.mjs`** - PostCSS (required by Tailwind)
+- **`tsconfig.json`** - TypeScript compiler settings
+- **`eslint.config.mjs`** - ESLint rules
+- **`jest.config.js`** - Jest test configuration (includes inline Babel config for tests only)
+- **`Dockerfile`** - Container configuration
 
-## 🎨 Styling & UI
+## Styling
 
-### Design System
-- **Tailwind CSS**: Utility-first styling
-- **Custom Variables**: CSS custom properties for theming
-- **Dark Mode**: Automatic system preference detection
-- **Responsive**: Mobile-first design approach
+Built with Tailwind CSS utility-first approach:
+- Custom color variables for theming
+- Responsive mobile-first design
+- Dark mode support (system preference)
+- Reusable component patterns
 
-### Component Library
-- **Cards**: Flexible container components
-- **Buttons**: Various styles and states
-- **Charts**: Interactive data visualization
-- **Badges**: Status and information display
+## WebSocket Integration
 
-## 🔍 Development Notes
+The frontend connects to the backend via WebSocket for real-time updates:
 
-### State Management
-- Uses React hooks for local state
-- No external state management library needed
+```typescript
+// Custom hook for WebSocket connection
+const { sendMessage, lastMessage } = useBackendWS(sessionId);
+```
 
-### Performance Optimizations
-- Next.js automatic code splitting
-- Standalone build for minimal Docker image
-- Static generation where applicable
-- Efficient re-renders with proper key props
+**Events handled:**
+- New questions published
+- Leaderboard updates
+- Session status changes
+- Student join/leave events
 
-### Browser Compatibility
-- Modern browsers with BroadcastChannel support
-- Graceful fallback to localStorage for older browsers
-- SSR-safe code with proper hydration
+## Deployment
 
----
+### Docker Build
 
-**Part of the Qwiz App ecosystem** - See main project README for full system overview and deployment instructions.
+```bash
+docker build -t qwiz-frontend .
+docker run -p 3000:3000 -e NEXT_PUBLIC_BACKEND_URL=http://backend:8080 qwiz-frontend
+```
+
+### Google Cloud Run
+
+See [main README](../README.md#deployment-to-the-production-environment) for Cloud Run deployment instructions.
+
+## Testing
+
+**Framework:** Jest + React Testing Library (Babel configured inline in jest.config.js for tests only)
+
+```bash
+npm test               # Run all tests (17 tests)
+npm run test:watch     # Watch mode
+npm run test:coverage  # Coverage report
+```
+
+**Test files:**
+- `src/components/__tests__/ui.test.tsx` - UI components (Button, Input, Badge, ConfirmDialog)
+- `src/components/__tests__/Chart.test.tsx` - Chart rendering
+- `src/__tests__/validation.test.ts` - Validation logic (session codes, names, scoring)
+
+## Related Documentation
+
+- **[Local Setup Guide](../LOCAL_SETUP.md)** - Complete development environment setup
+- **[Main README](../README.md)** - Project overview and deployment
+- **[Backend README](../backend/README.md)** - Backend API documentation

@@ -3,12 +3,10 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import type {
-  BusEvent,
   LeaderboardRow,
   PublicMCQ,
   RoundResults,
 } from "@/types";
-import { bus } from "@/lib/bus";
 import { Card, CardBody, Button, ConfirmDialog } from "@/components/ui";
 import { ColumnChart } from "@/components/Chart";
 import { useBackendWS } from "@/lib/usebackendWS";
@@ -128,9 +126,6 @@ export default function StudentPlayPage() {
         setExplanation("");
         setCorrectAnswer("");
         tickCountdown(publicMcq.deadlineMs, publicMcq.roundMs);
-
-        // Also emit to bus for compatibility (but DON'T call tickCountdown again in bus handler)
-        bus.emit({ type: "mcq_published", code, mcq: publicMcq });
       } else if (msg.type === "answer_result") {
         // Handle answer feedback from backend
         console.log("Answer result:", msg);
@@ -153,8 +148,6 @@ export default function StudentPlayPage() {
             })
           );
           setTop(leaderboardData);
-          // Also emit to bus for compatibility
-          bus.emit({ type: "leaderboard_update", code, top: leaderboardData });
         }
       } else if (msg.type === "session_ended") {
         // Handle session end - find this student's results
@@ -695,7 +688,9 @@ export default function StudentPlayPage() {
             </Card>
           )}
 
-          {/* Results */}
+          {/* TODO: Results card - shows class-wide answer distribution chart
+               Currently unused as `results` state is never populated with actual data.
+               This would display how many students picked each option. */}
           {results && (
             <Card>
               <CardBody className="p-5 sm:p-6">

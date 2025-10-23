@@ -1,4 +1,3 @@
-// src/components/Chart.tsx
 import * as React from "react";
 
 type Datum = { label: string; value: number; highlight?: boolean };
@@ -12,9 +11,8 @@ export function ColumnChart({
   max?: number;
   height?: number;
 }) {
-  // Make one equal-width column per data point
   const cols = `repeat(${Math.max(1, data.length)}, minmax(0, 1fr))`;
-  const usable = Math.max(0, height - 40); // reserve space for labels/values
+  const usable = Math.max(0, height - 40);
 
   return (
     <div className="w-full overflow-x-auto">
@@ -29,7 +27,6 @@ export function ColumnChart({
               key={d.label}
               className="flex min-w-[64px] flex-col items-center"
             >
-              {/* Bar */}
               <div
                 className={`mx-auto w-6 sm:w-8 rounded-t-md ${
                   d.highlight ? "bg-indigo-600" : "bg-gray-300"
@@ -37,7 +34,6 @@ export function ColumnChart({
                 style={{ height: Math.max(4, h) }}
                 title={`${d.label}: ${d.value}`}
               />
-              {/* Label + value */}
               <div className="mt-1 break-words text-center text-xs leading-tight text-gray-700">
                 {d.label}
               </div>

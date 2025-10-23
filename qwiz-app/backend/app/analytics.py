@@ -1,10 +1,9 @@
-# app/analytics.py
 from datetime import datetime
 from typing import Dict, Optional
 
 from app.schemas import (
-    StudentJoinEvent, StudentLeaveEvent, QuestionGeneratedEvent, 
-    AnswerSubmittedEvent, SessionAnalytics, SessionEnd
+    StudentJoinEvent, StudentLeaveEvent, QuestionGeneratedEvent,
+    AnswerSubmittedEvent, SessionAnalytics
 )
 
 class AnalyticsService:

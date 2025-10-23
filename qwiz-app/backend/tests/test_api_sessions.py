@@ -2,8 +2,7 @@
 Unit tests for session API endpoints
 """
 import pytest
-from unittest.mock import Mock, patch, AsyncMock
-from datetime import datetime, timezone
+from unittest.mock import Mock, patch
 
 
 @pytest.mark.unit

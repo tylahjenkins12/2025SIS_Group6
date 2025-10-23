@@ -2,7 +2,7 @@
 Unit tests for WebSocket connections and real-time communication
 """
 import pytest
-from unittest.mock import Mock, AsyncMock, patch
+from unittest.mock import Mock
 import json
 
 

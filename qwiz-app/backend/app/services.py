@@ -1,8 +1,7 @@
-# app/services.py
 import json
 import asyncio
 import requests
-from typing import List, Dict, Optional
+from typing import List, Dict
 from datetime import datetime, timezone
 
 from fastapi import WebSocket, WebSocketDisconnect
@@ -247,76 +246,3 @@ async def generate_three_questions_with_llm(transcript: str) -> List[FirestoreQu
     except Exception as e:
         print(f"An unexpected error occurred: {e}")
         return []
-
-async def generate_question_with_llm(transcript: str) -> Optional[FirestoreQuestion]:
-    """
-    Uses the Gemini API to generate a single multiple-choice question from a transcript.
-    The API request is configured to return a structured JSON response.
-    Returns a formatted FirestoreQuestion object or None on failure.
-    """
-    api_key = settings.GEMINI_API_KEY
-    api_url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key={api_key}"
-    
-    prompt = f"""Based on the following lecture transcript, generate a single multiple-choice question.
-    For each question, provide four distinct answer options, clearly indicate the correct answer, and include a simple, clear explanation of why it is correct. Make the explanation easy to understand and, when possible, add context or insight that goes beyond the transcript.
-    Ensure the question is directly relevant to the transcript content.
-
-    Transcript:
-    {transcript}
-    """
-    
-    # Define the desired JSON schema for the LLM response
-    response_schema = {
-        "type": "OBJECT",
-        "properties": {
-            "question_text": {"type": "STRING"},
-            "options": {
-                "type": "ARRAY",
-                "items": {"type": "STRING"}
-            },
-            "correct_answer": {"type": "STRING"},
-            "explanation": {"type": "STRING"}
-        },
-        "propertyOrdering": ["question_text", "options", "correct_answer", "explanation"]
-    }
-    
-    payload = {
-        "contents": [{"parts": [{"text": prompt}]}],
-        "generationConfig": {
-            "responseMimeType": "application/json",
-            "responseSchema": response_schema
-        }
-    }
-    
-    try:
-        response = requests.post(api_url, json=payload, headers={'Content-Type': 'application/json'})
-        response.raise_for_status()
-        
-        result = response.json()
-        if result.get("candidates"):
-            json_text = result["candidates"][0]["content"]["parts"][0]["text"]
-            parsed_json = json.loads(json_text)
-            
-            # Validate and format the LLM response into a FirestoreQuestion object
-            llm_question = QuestionFromLLM(**parsed_json)
-            
-            # The FirestoreQuestion model will add its own ID
-            return FirestoreQuestion(
-                questionText=llm_question.question_text,
-                options=llm_question.options,
-                correctAnswer=llm_question.correct_answer,
-                explanation=llm_question.explanation,
-                generatedBy="AI"
-            )
-        else:
-            print("LLM response did not contain candidates.")
-            return None
-    except requests.exceptions.RequestException as e:
-        print(f"Error calling Gemini API: {e}")
-        return None
-    except json.JSONDecodeError as e:
-        print(f"Error decoding JSON from LLM response: {e}")
-        return None
-    except Exception as e:
-        print(f"An unexpected error occurred: {e}")
-        return None

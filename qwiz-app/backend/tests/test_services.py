@@ -2,7 +2,7 @@
 Unit tests for service layer (Firestore, Gemini AI, Analytics)
 """
 import pytest
-from unittest.mock import Mock, patch, AsyncMock, MagicMock
+from unittest.mock import Mock, patch
 from datetime import datetime, timezone
 
 

@@ -1,4 +1,3 @@
-# app/api/sessions.py
 import json
 import uuid
 import random
@@ -9,7 +8,6 @@ from fastapi import APIRouter, HTTPException, WebSocket, WebSocketDisconnect
 
 # Note: The import below assumes that db and session_manager are accessible this way.
 from app.dependencies import db, session_manager, analytics_service
-# from app.config import settings # You would need this import if using the settings object directly
 from app.schemas import SessionCreate, StudentAnswer, LecturerQuestionSelection
 from app.services import generate_three_questions_with_llm
 
@@ -24,8 +22,7 @@ session_start_times = {}
 # Store question options temporarily (chunk_id -> list of questions)
 question_options_cache = {}
 
-# Default constants (will be overridden by session configuration)
-GENERATION_INTERVAL = 30
+# Default constants
 MIN_TRANSCRIPT_LENGTH = 20  # Reduced for testing with 20-second intervals
 
 def generate_short_session_code() -> str:

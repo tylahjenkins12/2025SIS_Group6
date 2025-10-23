@@ -5,7 +5,6 @@ import PreviewMock from "@/components/PreviewMock";
 export default function AboutPage() {
   return (
     <div className="w-full">
-      {/* Page Header */}
       <header className="sticky top-0 z-20 border-b border-slate-100 bg-white/70 backdrop-blur">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4 sm:px-6">
           <Link href="/" className="font-semibold tracking-tight text-slate-800">
@@ -32,9 +31,7 @@ export default function AboutPage() {
         </div>
       </header>
 
-      {/* Page Header */}
       <section className="relative bg-gradient-to-br from-indigo-50 via-white to-purple-50 overflow-hidden">
-        {/* Background decorative elements */}
         <div className="absolute inset-0">
           <div className="absolute top-0 left-0 w-72 h-72 bg-indigo-100 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob"></div>
           <div className="absolute top-0 right-0 w-72 h-72 bg-purple-100 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob animation-delay-2000"></div>
@@ -252,7 +249,6 @@ export default function AboutPage() {
 
       {/* CTA Section */}
       <section className="relative bg-gradient-to-br from-indigo-50 via-white to-purple-50 overflow-hidden">
-        {/* Background decorative elements */}
         <div className="absolute inset-0">
           <div className="absolute top-0 left-0 w-72 h-72 bg-indigo-100 rounded-full mix-blend-multiply filter blur-xl opacity-50 animate-blob"></div>
           <div className="absolute top-0 right-0 w-72 h-72 bg-purple-100 rounded-full mix-blend-multiply filter blur-xl opacity-50 animate-blob animation-delay-2000"></div>

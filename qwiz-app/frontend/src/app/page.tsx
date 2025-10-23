@@ -1,11 +1,9 @@
-// app/page.tsx
 import Link from "next/link";
-import { Card, CardBody, Button } from "@/components/ui";
+import { Button } from "@/components/ui";
 
 export default function HomePage() {
   return (
     <div className="w-full">
-      {/* Page Header (desktop + mobile) */}
       <header className="sticky top-0 z-20 border-b border-slate-100 bg-white/70 backdrop-blur">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4 sm:px-6">
           <Link href="/" className="font-semibold tracking-tight text-slate-800">
@@ -15,7 +13,6 @@ export default function HomePage() {
             </span>
           </Link>
 
-          {/* Desktop nav */}
           <nav className="hidden items-center gap-6 text-sm text-slate-600 sm:flex">
             <Link href="/" className="hover:text-slate-900">
               Home
@@ -31,7 +28,6 @@ export default function HomePage() {
             </Link>
           </nav>
 
-          {/* Mobile menu (no extra deps) */}
           <details className="relative sm:hidden">
             <summary
               className="list-none cursor-pointer rounded-md px-3 py-2 text-sm text-slate-700 hover:bg-slate-100"
@@ -57,9 +53,7 @@ export default function HomePage() {
         </div>
       </header>
 
-      {/* HERO (full-bleed) */}
       <section className="relative bg-gradient-to-br from-indigo-50 via-white to-purple-50 overflow-hidden">
-        {/* Background decorative elements */}
         <div className="absolute inset-0">
           <div className="absolute top-0 left-0 w-72 h-72 bg-indigo-100 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob"></div>
           <div className="absolute top-0 right-0 w-72 h-72 bg-purple-100 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob animation-delay-2000"></div>
@@ -100,7 +94,6 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Simple How it works */}
       <section className="py-16 bg-white">
         <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 text-center">
           <h2 className="text-3xl font-bold text-slate-900 sm:text-4xl mb-8">
@@ -135,9 +128,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Video Demo Section */}
       <section className="relative py-16 bg-gradient-to-br from-indigo-50 via-white to-purple-50 overflow-hidden">
-        {/* Background decorative elements */}
         <div className="absolute inset-0">
           <div className="absolute top-0 left-0 w-72 h-72 bg-indigo-100 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob"></div>
           <div className="absolute top-0 right-0 w-72 h-72 bg-purple-100 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob animation-delay-2000"></div>
@@ -181,7 +172,6 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Final CTA */}
       <section className="bg-gradient-to-r from-indigo-600 to-purple-600 py-16">
         <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 text-center">
           <h2 className="text-3xl font-bold text-white sm:text-4xl mb-6">

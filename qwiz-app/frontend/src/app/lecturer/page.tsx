@@ -1,4 +1,3 @@
-// Lecturer start page// 
 "use client";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -6,16 +5,8 @@ import { Card, CardBody, Button } from "@/components/ui";
 import Link from "next/link";
 import { useToast } from "@/components/Toast";
 
-function makeCode() {
-  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-  let c = "";
-  for (let i = 0; i < 4; i++) c += chars[Math.floor(Math.random() * chars.length)];
-  return c;
-}
-
 export default function LecturerStartPage() {
   const router = useRouter();
-  const [code] = useState(makeCode());
   const { showToast } = useToast();
   const [sessionConfig, setSessionConfig] = useState({
     lecturerName: "",
@@ -75,7 +66,6 @@ export default function LecturerStartPage() {
       <main className="w-full max-w-3xl px-4 sm:px-6">
         <Card className="w-full">
           <CardBody className="p-6 sm:p-8">
-            {/* Title + helper text */}
             <div className="flex items-start gap-3">
               <div className="text-2xl">🎓</div>
               <div>
@@ -211,7 +201,6 @@ export default function LecturerStartPage() {
               </div>
             </div>
 
-            {/* Action buttons */}
             <div className="mt-6 flex items-center justify-between">
               <Link
                 href="/"
@@ -227,7 +216,6 @@ export default function LecturerStartPage() {
               </Button>
             </div>
 
-            {/* Privacy note */}
             <p className="mt-3 text-xs text-slate-500">
               No student accounts. No data stored after class.
             </p>

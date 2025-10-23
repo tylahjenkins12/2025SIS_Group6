@@ -83,7 +83,6 @@ export default function StudentJoinPage() {
       <main className="mx-auto grid min-h-[70vh] max-w-md place-items-center">
         <Card className="w-full">
           <CardBody className="p-6 sm:p-8">
-            {/* Title + helper */}
             <div className="flex items-start gap-3">
               <div className="text-2xl">🎉</div>
               <div>
@@ -96,7 +95,6 @@ export default function StudentJoinPage() {
               </div>
             </div>
 
-            {/* Form */}
             <div className="mt-6 space-y-4">
               <div>
                 <label className="text-sm text-gray-700">Your nickname</label>
@@ -121,7 +119,6 @@ export default function StudentJoinPage() {
                 />
               </div>
 
-              {/* Action buttons */}
               <div className="flex items-center justify-between">
                 <Link
                   href="/"
