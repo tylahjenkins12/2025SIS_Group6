@@ -2,32 +2,15 @@
 
 import { useEffect, useMemo, useState, Suspense, useCallback } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import type { MCQ, LeaderboardRow, PublicMCQ, RoundResults } from "@/types";
+import type { MCQ, LeaderboardRow, RoundResults } from "@/types";
 import { Card, CardBody, Button, Badge, ConfirmDialog } from "@/components/ui";
 import { ColumnChart } from "@/components/Chart";
 import { MicCapture } from "@/components/MicCapture";
 import { QuestionSelector } from "@/components/QuestionSelector";
 import { useBackendWS } from "@/lib/usebackendWS";
 
-// Sample draft(s)
-const SAMPLE_DRAFTS: MCQ[] = [
-  {
-    mcqId: "m1",
-    question: "Which GCP service runs containers without servers?",
-    options: [
-      { id: "a", text: "Cloud Run" },
-      { id: "b", text: "Compute Engine" },
-      { id: "c", text: "Bare metal" },
-      { id: "d", text: "Filestore" },
-    ],
-    correctOptionId: "a",
-  },
-];
-
 // 15-second rounds
 const ROUND_MS = 15_000;
-const BASE_SCORE = 600;
-const SPEED_BONUS_MAX = 400;
 
 type Answer = { student: string; optionId: string; respondedAtMs: number };
 
@@ -36,10 +19,9 @@ function LecturerSessionContent() {
   const router = useRouter();
   const code = params.get("sessionId") ?? "";
 
-  const [drafts, setDrafts] = useState<MCQ[]>(SAMPLE_DRAFTS);
-  const [published, setPublished] = useState<MCQ[]>([]);
+  const [published] = useState<MCQ[]>([]);
   const [top, setTop] = useState<LeaderboardRow[]>([]);
-  const [lastResults, setLastResults] = useState<RoundResults | null>(null);
+  const [lastResults] = useState<RoundResults | null>(null);
   const [round, setRound] = useState<{
     mcq: MCQ | null;
     deadlineMs: number;
@@ -258,74 +240,6 @@ function LecturerSessionContent() {
     setQuestionOptions(null);
   }, []);
 
-  const publish = useCallback(
-    (mcq: MCQ) => {
-      setDrafts((d) => d.filter((x) => x.mcqId !== mcq.mcqId));
-      setPublished((p) => [mcq, ...p]);
-      setLastResults(null);
-
-      const now = Date.now();
-      const deadlineMs = now + ROUND_MS;
-      setRound({ mcq, deadlineMs, answers: [], ticking: true, now });
-
-      const publicMcq: PublicMCQ = {
-        mcqId: mcq.mcqId,
-        question: mcq.question,
-        options: mcq.options,
-        deadlineMs,
-        roundMs: ROUND_MS,
-      };
-      setTimeout(finishRound, ROUND_MS + 50);
-    },
-    [code]
-  );
-
-  function finishRound() {
-    setRound((r) => {
-      if (!r.mcq) return r;
-      const correct = r.mcq.correctOptionId;
-
-      const countsMap = new Map<string, number>();
-      r.mcq.options.forEach((o) => countsMap.set(o.id, 0));
-      r.answers.forEach((a) => countsMap.set(a.optionId, (countsMap.get(a.optionId) || 0) + 1));
-      const counts = r.mcq.options.map((o) => ({ optionId: o.id, count: countsMap.get(o.id) || 0 }));
-
-      const byStudent = new Map<string, number>();
-      r.answers.forEach((a) => {
-        const isCorrect = a.optionId === correct;
-        let delta = 0;
-        if (isCorrect) {
-          const remaining = Math.max(0, r.deadlineMs - a.respondedAtMs);
-          const bonus = Math.round((remaining / ROUND_MS) * SPEED_BONUS_MAX);
-          delta = BASE_SCORE + bonus;
-        }
-        byStudent.set(a.student, (byStudent.get(a.student) || 0) + delta);
-      });
-
-      setTop((prev) => {
-        const next = new Map<string, number>(prev.map((x) => [x.name, x.score]));
-        for (const [name, delta] of byStudent.entries()) {
-          next.set(name, (next.get(name) || 0) + delta);
-        }
-        const sorted = Array.from(next.entries())
-          .map(([name, score]) => ({ name, score }))
-          .sort((a, b) => b.score - a.score)
-          .slice(0, 10);
-        return sorted;
-      });
-
-      const results = {
-        mcqId: r.mcq.mcqId,
-        counts,
-        correctOptionId: correct,
-        top: top,
-      } satisfies RoundResults;
-      setLastResults(results);
-
-      return { ...r, ticking: false };
-    });
-  }
-
   function handleEndSessionConfirm() {
     // Send end session message to backend via WebSocket
     if (sendWS && wsReady) {
@@ -340,11 +254,6 @@ function LecturerSessionContent() {
   const timeLeft = Math.max(0, round.deadlineMs - round.now);
   const secondsLeft = Math.ceil(timeLeft / 1000);
   const progressPct = round.mcq ? Math.max(0, Math.min(100, (timeLeft / ROUND_MS) * 100)) : 0;
-
-  const startNextDraft = () => {
-    if (round.ticking) return;
-    if (drafts.length > 0) publish(drafts[0]);
-  };
 
   const copyCode = async () => {
     try {

@@ -9,11 +9,13 @@ from fastapi import WebSocket, WebSocketDisconnect
 from app.config import settings
 from app.schemas import QuestionFromLLM, FirestoreQuestion
 
+
 class SessionManager:
     """
     Manages WebSocket connections and Firestore listeners based on session ID.
     This class is now defined here but the instance is created in dependencies.py.
     """
+
     def __init__(self, db_client):
         self.active_sessions: Dict[str, List[WebSocket]] = {}
         self.lecturer_connections: Dict[str, List[WebSocket]] = {}  # Track lecturer connections separately
@@ -92,7 +94,7 @@ class SessionManager:
             return
 
         # Reference to the questions sub-collection for the given session
-        questions_ref = self.db.collection('sessions').document(session_id).collection('questions')
+        questions_ref = self.db.collection("sessions").document(session_id).collection("questions")
 
         # Helper function to convert Firestore datetime objects to ISO strings
         def serialize_firestore_data(data):
@@ -101,7 +103,7 @@ class SessionManager:
                 return {k: serialize_firestore_data(v) for k, v in data.items()}
             elif isinstance(data, list):
                 return [serialize_firestore_data(item) for item in data]
-            elif hasattr(data, 'isoformat'):  # datetime objects
+            elif hasattr(data, "isoformat"):  # datetime objects
                 return data.isoformat()
             else:
                 return data
@@ -110,52 +112,63 @@ class SessionManager:
         def on_snapshot(col_snapshot, changes, read_time):
             print(f"Snapshot received for session {session_id}")
             for change in changes:
-                if change.type.name == 'ADDED':
+                if change.type.name == "ADDED":
                     new_question_data = change.document.to_dict()
 
                     # Convert datetime objects to ISO strings
                     serialized_question = serialize_firestore_data(new_question_data)
 
                     # Get session configuration for answer time limit
-                    session_ref = self.db.collection('sessions').document(session_id)
+                    session_ref = self.db.collection("sessions").document(session_id)
                     session_doc = session_ref.get()
                     answer_time = 30  # default
                     if session_doc.exists:
                         session_data = session_doc.to_dict()
-                        answer_time = session_data.get('answerTimeSeconds', 30)
+                        answer_time = session_data.get("answerTimeSeconds", 30)
 
                     # Broadcast the new question with timing info
                     print(f"📤 Broadcasting question {serialized_question.get('id')} to students")
                     # Get the running event loop and schedule the broadcast task
                     try:
                         loop = asyncio.get_running_loop()
-                        loop.create_task(self.broadcast(session_id, {
-                            "type": "new_question",
-                            "question": serialized_question,
-                            "answerTimeSeconds": answer_time,
-                            "questionStartTime": datetime.now(timezone.utc).isoformat()
-                        }))
+                        loop.create_task(
+                            self.broadcast(
+                                session_id,
+                                {
+                                    "type": "new_question",
+                                    "question": serialized_question,
+                                    "answerTimeSeconds": answer_time,
+                                    "questionStartTime": datetime.now(timezone.utc).isoformat(),
+                                },
+                            )
+                        )
                         print(f"✅ Question broadcast scheduled")
                     except RuntimeError:
                         # No event loop running, use asyncio.run as fallback
-                        asyncio.run(self.broadcast(session_id, {
-                            "type": "new_question",
-                            "question": serialized_question,
-                            "answerTimeSeconds": answer_time,
-                            "questionStartTime": datetime.now(timezone.utc).isoformat()
-                        }))
+                        asyncio.run(
+                            self.broadcast(
+                                session_id,
+                                {
+                                    "type": "new_question",
+                                    "question": serialized_question,
+                                    "answerTimeSeconds": answer_time,
+                                    "questionStartTime": datetime.now(timezone.utc).isoformat(),
+                                },
+                            )
+                        )
                         print(f"✅ Question broadcast complete")
 
         # Start the listener and store the callback in a dictionary to manage it later
         print(f"Starting Firestore listener for session {session_id}")
         self.snapshot_listeners[session_id] = questions_ref.on_snapshot(on_snapshot)
-    
+
     def remove_listener(self, session_id: str):
         """Detaches the Firestore listener for a session."""
         if session_id in self.snapshot_listeners:
             self.snapshot_listeners[session_id].unsubscribe()
             del self.snapshot_listeners[session_id]
             print(f"Firestore listener for session {session_id} detached.")
+
 
 async def generate_three_questions_with_llm(transcript: str) -> List[FirestoreQuestion]:
     """
@@ -188,28 +201,22 @@ async def generate_three_questions_with_llm(transcript: str) -> List[FirestoreQu
                     "type": "OBJECT",
                     "properties": {
                         "question_text": {"type": "STRING"},
-                        "options": {
-                            "type": "ARRAY",
-                            "items": {"type": "STRING"}
-                        },
+                        "options": {"type": "ARRAY", "items": {"type": "STRING"}},
                         "correct_answer": {"type": "STRING"},
-                        "explanation": {"type": "STRING"}
-                    }
-                }
+                        "explanation": {"type": "STRING"},
+                    },
+                },
             }
-        }
+        },
     }
 
     payload = {
         "contents": [{"parts": [{"text": prompt}]}],
-        "generationConfig": {
-            "responseMimeType": "application/json",
-            "responseSchema": response_schema
-        }
+        "generationConfig": {"responseMimeType": "application/json", "responseSchema": response_schema},
     }
 
     try:
-        response = requests.post(api_url, json=payload, headers={'Content-Type': 'application/json'})
+        response = requests.post(api_url, json=payload, headers={"Content-Type": "application/json"})
         response.raise_for_status()
 
         result = response.json()
@@ -226,7 +233,7 @@ async def generate_three_questions_with_llm(transcript: str) -> List[FirestoreQu
                         options=llm_question.options,
                         correctAnswer=llm_question.correct_answer,
                         explanation=llm_question.explanation,
-                        generatedBy="AI"
+                        generatedBy="AI",
                     )
                     questions.append(firestore_question)
                 except Exception as e:

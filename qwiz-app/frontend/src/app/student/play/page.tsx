@@ -11,8 +11,6 @@ import { Card, CardBody, Button, ConfirmDialog } from "@/components/ui";
 import { ColumnChart } from "@/components/Chart";
 import { useBackendWS } from "@/lib/usebackendWS";
 
-const OVERLAY_MS = 3500;
-
 export default function StudentPlayPage() {
   const router = useRouter();
   const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -21,13 +19,11 @@ export default function StudentPlayPage() {
   // Use state to avoid hydration errors - only set after client mount
   const [code, setCode] = useState("");
   const [name, setName] = useState("Anon");
-  const [mounted, setMounted] = useState(false);
 
   // Set values from sessionStorage only on client side after mount
   useEffect(() => {
     setCode(sessionStorage.getItem("mvp_code") ?? "");
     setName(sessionStorage.getItem("mvp_name") ?? "Anon");
-    setMounted(true);
 
     // Cleanup timers on unmount
     return () => {

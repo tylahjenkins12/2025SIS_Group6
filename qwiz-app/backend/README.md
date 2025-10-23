@@ -370,6 +370,30 @@ Available fixtures in `tests/conftest.py`:
 
 **Legacy Tests:** Manual integration tests are in `tests/legacy/` and excluded from automated runs.
 
+## Linting
+
+**Tool:** Black (opinionated Python code formatter)
+
+**Configuration:** Command-line arguments (`--line-length=120`)
+
+```bash
+# Check formatting without making changes
+black --check --line-length=120 app
+
+# Auto-format all files
+black --line-length=120 app
+```
+
+**Formatting Rules:**
+- Line length: 120 characters
+- Target: Python 3.11+
+- Double quotes for strings
+- Consistent indentation and spacing
+
+**CI Integration:** Black formatting check runs automatically on every PR via GitHub Actions. See `.github/workflows/pr-checks.yml`
+
+**Note:** Black auto-fixes formatting issues. Run `black app` locally before committing to ensure CI passes.
+
 ## Deployment
 
 ### Docker Build

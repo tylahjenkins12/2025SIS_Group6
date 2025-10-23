@@ -72,7 +72,7 @@ export default function StudentJoinPage() {
       sessionStorage.setItem("mvp_code", sessionCode);
       sessionStorage.setItem("mvp_name", studentName);
       router.push("/student/play");
-    } catch (error) {
+    } catch {
       showToast("❌ Connection error. Check your internet.", "error");
       setLoading(false);
     }

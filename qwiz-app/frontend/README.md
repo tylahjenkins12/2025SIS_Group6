@@ -77,6 +77,25 @@ npm run test:watch     # Run tests in watch mode
 npm run test:coverage  # Generate coverage report
 ```
 
+## Linting
+
+**Tool:** ESLint with TypeScript support
+
+**Configuration:** `eslint.config.mjs`
+
+```bash
+npm run lint           # Check for linting errors
+```
+
+**Linting Rules:**
+- ✅ Errors on unused variables (except those prefixed with `_`)
+- ✅ Allows `any` types (for flexibility during development)
+- ⚠️ Warns on missing React Hook dependencies
+- ✅ Allows unescaped quotes in JSX
+- ✅ Ignores server.js and config files
+
+**CI Integration:** Linting runs automatically on every PR via GitHub Actions. See `.github/workflows/pr-checks.yml`
+
 ## Configuration Files
 
 - **`next.config.ts`** - Next.js configuration

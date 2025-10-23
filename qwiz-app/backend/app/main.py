@@ -1,4 +1,3 @@
-
 import os
 import uvicorn
 from fastapi import FastAPI
@@ -19,6 +18,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
 # Include router in startup event to avoid blocking imports
 @app.on_event("startup")
 def _startup_event():
@@ -27,11 +27,14 @@ def _startup_event():
     This prevents potential module-level blocking during import.
     """
     from app.api import sessions
+
     app.include_router(sessions.router)
+
 
 @app.get("/")
 async def root():
     return {"status": "The Qwiz App backend is running"}
+
 
 if __name__ == "__main__":
     # Get port from Cloud Run environment variable, default to 8080 for local development

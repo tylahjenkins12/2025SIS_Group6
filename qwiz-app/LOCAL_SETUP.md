@@ -261,7 +261,7 @@ rm -rf node_modules package-lock.json
 npm install
 ```
 
-### Firestore Connection Issues
+### FireStore Connection Issues
 **Symptoms:** Sessions fail to create, database errors in logs
 **Solution:**
 1. Verify GCP authentication: `gcloud auth list`

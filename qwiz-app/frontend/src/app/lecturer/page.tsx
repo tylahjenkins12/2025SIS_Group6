@@ -17,14 +17,6 @@ export default function LecturerStartPage() {
   });
   const [isCreating, setIsCreating] = useState(false);
 
-  const handleCopy = async () => {
-    try {
-      await navigator.clipboard.writeText(code);
-      showToast("📋 Code copied to clipboard", "success");
-    } catch (err) {
-      showToast("❌ Copy failed. Try again.", "error");
-    }
-  };
 
   const createSession = async () => {
     if (!sessionConfig.lecturerName.trim() || !sessionConfig.courseName.trim()) {
@@ -54,7 +46,7 @@ export default function LecturerStartPage() {
       } else {
         throw new Error("Failed to create session");
       }
-    } catch (error) {
+    } catch {
       showToast("❌ Failed to create session. Try again.", "error");
     } finally {
       setIsCreating(false);
