@@ -1,4 +1,3 @@
-// Lecturer start page// 
 "use client";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -6,16 +5,8 @@ import { Card, CardBody, Button } from "@/components/ui";
 import Link from "next/link";
 import { useToast } from "@/components/Toast";
 
-function makeCode() {
-  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-  let c = "";
-  for (let i = 0; i < 4; i++) c += chars[Math.floor(Math.random() * chars.length)];
-  return c;
-}
-
 export default function LecturerStartPage() {
   const router = useRouter();
-  const [code] = useState(makeCode());
   const { showToast } = useToast();
   const [sessionConfig, setSessionConfig] = useState({
     lecturerName: "",
@@ -26,14 +17,6 @@ export default function LecturerStartPage() {
   });
   const [isCreating, setIsCreating] = useState(false);
 
-  const handleCopy = async () => {
-    try {
-      await navigator.clipboard.writeText(code);
-      showToast("📋 Code copied to clipboard", "success");
-    } catch (err) {
-      showToast("❌ Copy failed. Try again.", "error");
-    }
-  };
 
   const createSession = async () => {
     if (!sessionConfig.lecturerName.trim() || !sessionConfig.courseName.trim()) {
@@ -63,7 +46,7 @@ export default function LecturerStartPage() {
       } else {
         throw new Error("Failed to create session");
       }
-    } catch (error) {
+    } catch {
       showToast("❌ Failed to create session. Try again.", "error");
     } finally {
       setIsCreating(false);
@@ -75,7 +58,6 @@ export default function LecturerStartPage() {
       <main className="w-full max-w-3xl px-4 sm:px-6">
         <Card className="w-full">
           <CardBody className="p-6 sm:p-8">
-            {/* Title + helper text */}
             <div className="flex items-start gap-3">
               <div className="text-2xl">🎓</div>
               <div>
@@ -127,7 +109,7 @@ export default function LecturerStartPage() {
                     onChange={(e) => setSessionConfig(prev => ({ ...prev, answerTimeSeconds: parseInt(e.target.value) }))}
                     className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   >
-                    <option value={20}>20 seconds</option>
+                    <option value={15}>15 seconds</option>
                     <option value={30}>30 seconds</option>
                     <option value={45}>45 seconds</option>
                     <option value={60}>1 minute</option>
@@ -143,7 +125,7 @@ export default function LecturerStartPage() {
                     onChange={(e) => setSessionConfig(prev => ({ ...prev, transcriptionIntervalMinutes: parseFloat(e.target.value) }))}
                     className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   >
-                    <option value={0.33}>20 seconds (testing)</option>
+                    <option value={0.5}>30 seconds (testing)</option>
                     <option value={5}>5 minutes</option>
                     <option value={7}>7 minutes</option>
                     <option value={9}>9 minutes</option>
@@ -211,7 +193,6 @@ export default function LecturerStartPage() {
               </div>
             </div>
 
-            {/* Action buttons */}
             <div className="mt-6 flex items-center justify-between">
               <Link
                 href="/"
@@ -227,7 +208,6 @@ export default function LecturerStartPage() {
               </Button>
             </div>
 
-            {/* Privacy note */}
             <p className="mt-3 text-xs text-slate-500">
               No student accounts. No data stored after class.
             </p>

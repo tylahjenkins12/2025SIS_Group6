@@ -1,0 +1,116 @@
+name: Run Tests
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+  pull_request:
+    branches:
+      - main
+      - develop
+
+jobs:
+  frontend-lint:
+    name: Frontend - CI / Linting
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./qwiz-app/frontend
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: './qwiz-app/frontend/package-lock.json'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+  frontend-tests:
+    name: Frontend - CI / Unit Tests & Build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./qwiz-app/frontend
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: './qwiz-app/frontend/package-lock.json'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tests
+        run: npm test
+
+      - name: Build
+        run: npm run build
+
+  backend-lint:
+    name: Backend - CI / Linting
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./qwiz-app/backend
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+          cache-dependency-path: './qwiz-app/backend/requirements.txt'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Lint
+        run: |
+          black --check --line-length=120 app
+
+  backend-tests:
+    name: Backend - CI / Unit Tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./qwiz-app/backend
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+          cache-dependency-path: './qwiz-app/backend/requirements.txt'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run tests
+        run: pytest

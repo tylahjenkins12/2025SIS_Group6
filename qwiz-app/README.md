@@ -4,7 +4,7 @@ Real-time AI-powered quiz application for interactive lectures. Students join se
 
 ## Overview
 
-Qwiz App enhances lecture engagement by automatically generating quiz questions from live content using AI. The system provides real-time feedback to both students and lecturers, creating an interactive learning environment.
+Qwiz enhances lecture engagement by automatically generating quiz questions from live content using AI. The system provides real-time feedback to both students and lecturers, creating an interactive learning environment.
 
 ## Features
 
@@ -17,18 +17,18 @@ Qwiz App enhances lecture engagement by automatically generating quiz questions 
 
 ## Tech Stack
 
-- **Backend**: FastAPI (Python) with Firestore database
+- **Backend**: FastAPI (Python) with FireStore database
+- **Real-time**: WebSocket connections for live updates
 - **Frontend**: Next.js 15 with TypeScript and Tailwind CSS
 - **AI**: Google Gemini API for question generation
 - **Deployment**: Google Cloud Run with Docker containers
-- **Real-time**: WebSocket connections for live updates
 
 ## Architecture
 
 ```
-┌─────────────┐    WebSocket    ┌─────────────┐    Firestore    ┌─────────────┐
+┌─────────────┐    WebSocket    ┌─────────────┐    FireStore    ┌─────────────┐
 │   Frontend  │◄───────────────►│   Backend   │◄───────────────►│  Database   │
-│  (Next.js)  │                 │  (FastAPI)  │                 │ (Firestore) │
+│  (Next.js)  │                 │  (FastAPI)  │                 │ (FireStore) │
 └─────────────┘                 └─────────────┘                 └─────────────┘
                                         │
                                         ▼
@@ -44,7 +44,9 @@ Qwiz App enhances lecture engagement by automatically generating quiz questions 
 qwiz-app/
 ├── backend/              # FastAPI Python server
 │   ├── app/             # Application code
+│   ├── tests/           # Backend test scripts 
 │   ├── Dockerfile       # Backend container
+│   └── run_local.py     # entrypoint
 │   └── requirements.txt # Python dependencies
 ├── frontend/            # Next.js React app  
 │   ├── src/            # Source code
@@ -53,164 +55,135 @@ qwiz-app/
 ├── .env                # Environment configuration (create from .env.example)
 ├── .env.example        # Template for environment variables
 ├── docker-compose.yml  # Local development orchestration
+|── LOCAL_SETUP.md     # Setup process file
 └── README.md          # This file
 ```
 
 ## Quick Start
 
+**See [LOCAL_SETUP.md](LOCAL_SETUP.md)** for complete setup instructions including GCP authentication, environment configuration, and running the app locally.
+
 ### Prerequisites
-- Docker & Docker Compose
-- Google Cloud CLI (for deployment)
-- Node.js 18+ (for local frontend development)
-- Python 3.11+ (for local backend development)
+- Docker & Docker Compose OR Node.js 18+ & Python 3.11+
+- Google Cloud CLI (authenticated with Application Default Credentials)
+- Firebase project with FireStore enabled
+- Gemini API key
+
+## Development Best Practices
+
+### Code Quality
+- **Linting**: ESLint (frontend), Flake8 (backend)
+- **Testing**: Jest + React Testing Library (frontend), pytest (backend)
+- **Type Safety**: TypeScript (frontend), Pydantic schemas (backend)
+
+### Git Workflow
+1. Create feature branch from `main`
+2. Make changes with clear, descriptive commits
+3. Open Pull Request using the PR template
+4. **Automated CI checks run on every PR:**
+   - Linting (ESLint + Flake8)
+   - Unit tests (Jest + pytest)
+   - Build verification
+5. Address review feedback
+6. Merge after approval and passing checks
+
+### Pull Request Template
+All PRs must include:
+- Description of changes
+- Testing performed (unit + manual)
+- Link to related Trello ticket
+- Reviewer checklist completion
+
+See `.github/PULL_REQUEST_TEMPLATE.md` for full template.
 
 
-### Daily Git Workflow 
 
-1. Update local main branch:
-`git fetch origin && git checkout main && git pull origin main`
+## Deployment
 
-2. Create/switch to your branch:
-`checkout -b your-feature-name`    # Create new branch
-`git checkout your-feature-name`       # OR switch to existing branch
+**Deployment uses Google Cloud Run** with automated container builds via Cloud Build. Containers are stored in Artifact Registry and deployed as Cloud Run services.
 
-3. Make changes, then commit:
-`git add .`
-`git commit -m "Descriptive commit message"`
+**⚠️ Deploy Order**: Backend first, then frontend (frontend needs backend URL)
 
-**Switch back and rebase**
-`git rebase main`
-
-**If conflicts occur: resolve in editor, then**
-`git add . && git rebase --continue`
-
-**Force push when complete**
-`git push --force-with-lease origin your-feature-name`
-
-4. Create Pull Request on GitHub
-
-### Environment Setup
-
-1. **Copy the environment template**:
-```bash
-cp .env.example .env
-```
-
-2. **Edit `.env` file with your configuration**:
-- Add your Gemini API key (accessed via Google Cloud Secrets)
-- Update the HOST_GCLOUD_PATH to your local gcloud config directory
-- Keep QWIZ_API_URL as http://localhost:8080 for local development or switch to using the production backend
-
-### Run with Docker Compose
-
-```bash
-# Build and start both services
-docker-compose up --build
-
-# Or run in detached mode
-docker-compose up -d --build
-```
-
-Access the services:
-- Frontend: http://localhost:3000
-- Backend API: http://localhost:8080
-- API Documentation: http://localhost:8080/docs
-
-### Individual Development (Without Docker)
-
-**Backend**:
-```bash
-cd backend
-
-# Create and activate virtual environment
-python3 -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-
-# Install dependencies
-pip install -r requirements.txt
-
-# Run the development server
-uvicorn app.main:app --reload --port 8080    
-```
-
-**Frontend**:
-```bash
-cd frontend
-npm install
-npm run dev
-```
-
-## Google Cloud Authentication
-
-The application uses Application Default Credentials (ADC) for Google Cloud services:
-
-### Local Development
+### Prerequisites
 ```bash
 # Authenticate with Google Cloud
 gcloud auth application-default login
 
-# Set your project
+# Set project
 gcloud config set project software-innovation-studio-6
 ```
 
-This creates credentials at `~/.config/gcloud/application_default_credentials.json` which are automatically mounted in Docker containers via the volume mapping in docker-compose.yml.
-
-## Deployment to Production
-
-**⚠️ Important**: Deploy backend first, then frontend (frontend depends on backend URL)
-
-### 1. Deploy Backend to Cloud Run
+### Deploy Backend
 ```bash
 cd backend
-
 gcloud run deploy qwiz-backend \
   --source . \
   --platform managed \
   --region us-central1 \
   --allow-unauthenticated \
-  --set-secrets=GEMINI_API_KEY=GEMINI_API_KEY:latest \
-  --env-vars-file ../env.yaml
+  --set-secrets=GEMINI_API_KEY=GEMINI_API_KEY:latest
 ```
 
-### 2. Deploy Frontend to Cloud Run  
+### Deploy Frontend
 ```bash
 cd frontend
-
 gcloud run deploy qwiz-frontend \
   --source . \
   --platform managed \
   --region us-central1 \
   --allow-unauthenticated \
-  --port 3000
-  --env-vars-file ../env.yaml
+  --port 3000 \
+  --set-env-vars NEXT_PUBLIC_BACKEND_URL=<BACKEND_URL>
 ```
 
-### Docker Individual Containers
-```bash
-# Build images
-docker build -t qwiz-backend ./backend
-docker build -t qwiz-frontend ./frontend
-```
+Replace `<BACKEND_URL>` with the backend URL from the previous step.
+
+
 
 ## Testing
 
-### Backend API Testing
+### Automated Testing (CI/CD)
+
+**GitHub Actions** automatically run on every push and pull request:
+- ✅ Linting (ESLint + Flake8)
+- ✅ Unit tests (Jest + pytest)
+- ✅ Build verification
+
+See `.github/workflows/ci.yml` for full configuration.
+
+### Running Tests Locally
+
+**Frontend:**
 ```bash
-# Health check
-curl http://localhost:8080/
-
-# Create session
-curl -X POST http://localhost:8080/start-session
-
-# WebSocket testing with wscat
-wscat -c ws://localhost:8080/ws/lecturer/{session-id}
-wscat -c ws://localhost:8080/ws/student/{session-id}
+cd frontend
+npm test              # Run Jest tests (17 tests)
+npm run lint          # ESLint
+npm run build         # Verify build
 ```
 
-### Frontend Testing
-- Navigate to http://localhost:3000
-- Test lecturer flow: `/lecturer` → create session → manage questions
-- Test student flow: `/student` → join with code → answer questions
+**Backend:**
+```bash
+cd backend
+pytest                # Run all tests
+flake8 app --max-line-length=120  # Lint
+```
+
+### Test Coverage
+
+**Frontend** (Jest + React Testing Library):
+- UI components (Button, Input, Badge, ConfirmDialog)
+- Chart rendering and data visualization
+- Validation logic (session codes, names, scoring)
+
+**Backend** (pytest):
+- API endpoints and schemas
+- WebSocket real-time messaging
+- Analytics and leaderboard calculations
+- Error handling
+
+See component READMEs for detailed testing documentation:
+- [frontend/README.md](frontend/README.md#testing)
+- [backend/README.md](backend/README.md#testing)
 
 ## Development
 

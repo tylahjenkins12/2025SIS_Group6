@@ -3,17 +3,13 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import type {
-  BusEvent,
   LeaderboardRow,
   PublicMCQ,
   RoundResults,
 } from "@/types";
-import { bus } from "@/lib/bus";
 import { Card, CardBody, Button, ConfirmDialog } from "@/components/ui";
 import { ColumnChart } from "@/components/Chart";
 import { useBackendWS } from "@/lib/usebackendWS";
-
-const OVERLAY_MS = 3500;
 
 export default function StudentPlayPage() {
   const router = useRouter();
@@ -23,13 +19,11 @@ export default function StudentPlayPage() {
   // Use state to avoid hydration errors - only set after client mount
   const [code, setCode] = useState("");
   const [name, setName] = useState("Anon");
-  const [mounted, setMounted] = useState(false);
 
   // Set values from sessionStorage only on client side after mount
   useEffect(() => {
     setCode(sessionStorage.getItem("mvp_code") ?? "");
     setName(sessionStorage.getItem("mvp_name") ?? "Anon");
-    setMounted(true);
 
     // Cleanup timers on unmount
     return () => {
@@ -128,9 +122,6 @@ export default function StudentPlayPage() {
         setExplanation("");
         setCorrectAnswer("");
         tickCountdown(publicMcq.deadlineMs, publicMcq.roundMs);
-
-        // Also emit to bus for compatibility (but DON'T call tickCountdown again in bus handler)
-        bus.emit({ type: "mcq_published", code, mcq: publicMcq });
       } else if (msg.type === "answer_result") {
         // Handle answer feedback from backend
         console.log("Answer result:", msg);
@@ -153,8 +144,6 @@ export default function StudentPlayPage() {
             })
           );
           setTop(leaderboardData);
-          // Also emit to bus for compatibility
-          bus.emit({ type: "leaderboard_update", code, top: leaderboardData });
         }
       } else if (msg.type === "session_ended") {
         // Handle session end - find this student's results
@@ -211,7 +200,7 @@ export default function StudentPlayPage() {
 
     const fetchSessionInfo = async () => {
       try {
-        const backendUrl = process.env.NEXT_PUBLIC_BACKEND_API_BASE || "http://localhost:8080";
+        const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8080";
         console.log("🔍 Fetching session info for code:", code);
         console.log("🔗 Backend URL:", `${backendUrl}/sessions/${code}/config`);
 
@@ -285,7 +274,7 @@ export default function StudentPlayPage() {
       sessionStorage.removeItem("mvp_code");
       sessionStorage.removeItem("mvp_name");
     } catch {}
-    router.push("/student");
+    router.push("/");
   }
 
   if (!code)
@@ -372,7 +361,7 @@ export default function StudentPlayPage() {
 
           {/* Leave Button */}
           <div className="mt-6 text-center">
-            <Button onClick={() => setShowLeaveConfirm(true)} variant="primary">
+            <Button onClick={handleLeaveConfirm} variant="primary">
               Return to Home
             </Button>
           </div>
@@ -695,7 +684,9 @@ export default function StudentPlayPage() {
             </Card>
           )}
 
-          {/* Results */}
+          {/* TODO: Results card - shows class-wide answer distribution chart
+               Currently unused as `results` state is never populated with actual data.
+               This would display how many students picked each option. */}
           {results && (
             <Card>
               <CardBody className="p-5 sm:p-6">

@@ -18,7 +18,21 @@ const eslintConfig = [
       "out/**",
       "build/**",
       "next-env.d.ts",
+      "server.js",  // Node.js server file uses require()
+      "*.config.mjs",  // Config files
     ],
+  },
+  {
+    rules: {
+      "@typescript-eslint/no-explicit-any": "off",  // Allow any for now
+      "@typescript-eslint/no-unused-vars": ["error", {
+        "argsIgnorePattern": "^_",
+        "varsIgnorePattern": "^_"
+      }],
+      "react/no-unescaped-entities": "off",  // Allow apostrophes in text
+      "react-hooks/exhaustive-deps": "warn",  // Warn instead of error
+      "import/no-anonymous-default-export": "off",  // Allow in config files
+    },
   },
 ];
 

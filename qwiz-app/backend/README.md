@@ -1,190 +1,143 @@
-# 🚀 Qwiz Backend
+# Qwiz Backend
 
-FastAPI-powered backend service providing real-time quiz management, AI question generation, and WebSocket communication.
+FastAPI-powered backend service providing real-time quiz management, AI question generation, and WebSocket communication for the Qwiz interactive learning platform.
 
-## 🎯 Quick Start
+## Overview
+
+The backend handles:
+- **Session Management:** Create and manage quiz sessions with unique join codes
+- **Real-time Communication:** WebSocket connections for live updates to students and lecturers
+- **AI Question Generation:** Gemini API integration for automatic quiz question creation
+- **Data Persistence:** Firestore database for sessions, questions, students, and answers
+- **Scoring & Leaderboards:** Real-time score calculations and rankings
+
+## Local Development Setup
+
+**See [LOCAL_SETUP.md](../LOCAL_SETUP.md)** for complete setup instructions including:
+- Google Cloud authentication and configuration
+- Environment variable setup
+- Docker and manual setup options
+- Troubleshooting common issues
+
+### Quick Start (Manual)
 
 ```bash
-# Create virtual environment
+cd backend
 python3 -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-
-# Install dependencies
+source venv/bin/activate
 pip install -r requirements.txt
-
-# Run development server (http://localhost:8080)
-uvicorn app.main:app --reload --port 8080
+python run_local.py
 ```
 
-📚 API Documentation available at http://localhost:8080/docs
+Backend runs at http://localhost:8080 | API docs at http://localhost:8080/docs
 
-## 🏗️ Architecture
+## Architecture
 
 ### Tech Stack
 - **Framework:** FastAPI (Python 3.11)
-- **Database:** Google Firestore
-- **AI Integration:** Google Gemini API
+- **Database:** Google Firestore (NoSQL)
+- **AI:** Google Gemini 1.5 Flash
 - **Real-time:** WebSockets via FastAPI
 - **Authentication:** Application Default Credentials (ADC)
+- **Deployment:** Docker + Google Cloud Run
 
 ### Project Structure
 ```
 backend/
 ├── app/
-│   ├── main.py           # FastAPI application & routes
-│   ├── models.py         # Pydantic models
-│   ├── services/         
-│   │   ├── firestore.py  # Database operations
-│   │   ├── gemini.py     # AI question generation
-│   │   └── websocket.py  # WebSocket manager
-│   └── utils/            # Helper functions
-├── Dockerfile            # Container configuration
-└── requirements.txt      # Python dependencies
+│   ├── main.py              # FastAPI app, routes, WebSocket endpoints
+│   ├── schemas.py           # Pydantic request/response models
+│   ├── config.py            # Configuration and settings
+│   ├── dependencies.py      # Dependency injection (db, session_manager)
+│   ├── services.py          # Business logic (Gemini AI, question generation)
+│   ├── analytics.py         # Analytics and metrics calculations
+│   └── api/
+│       └── sessions.py      # Session management endpoints
+├── tests/
+│   ├── conftest.py          # Pytest fixtures and configuration
+│   ├── test_api_sessions.py # API endpoint tests
+│   ├── test_services.py     # Service layer tests
+│   ├── test_websockets.py   # WebSocket tests
+│   └── legacy/              # Archived manual test scripts
+├── Dockerfile               # Container configuration
+├── pytest.ini               # Pytest configuration
+├── requirements.txt         # Python dependencies (includes test deps)
+└── run_local.py            # Local development entrypoint
 ```
 
-## 🔌 API Endpoints
+## API Endpoints
 
-### Session Management
+FastAPI provides **interactive documentation** at http://localhost:8080/docs with full request/response schemas and a testing interface.
 
-#### `POST /api/sessions/create`
-Creates a new quiz session with unique 6-digit code.
-```json
-Request: { "lecturer_id": "prof123" }
-Response: { 
-  "session_id": "abc-123",
-  "code": "842956",
-  "created_at": "2025-01-01T10:00:00Z"
-}
-```
+### Key Endpoints
 
-#### `POST /api/sessions/join`
-Students join an active session.
-```json
-Request: { "code": "842956", "name": "John Doe" }
-Response: { 
-  "student_id": "stu-456",
-  "session_id": "abc-123",
-  "status": "joined"
-}
-```
+**Session Management**
+- `POST /api/sessions/create` - Create new session with unique code
+- `POST /api/sessions/join` - Student joins session by code
+- `GET /api/sessions/{session_id}` - Get session details
+- `POST /api/sessions/{session_id}/end` - End session
 
-#### `GET /api/sessions/{session_id}`
-Retrieve session details and current state.
+**Question Management**
+- `POST /api/questions/generate` - Generate questions from content using Gemini AI
+- `POST /api/questions/publish` - Publish question to students via WebSocket
+- `GET /api/sessions/{session_id}/results/{question_id}` - Get answer distribution
 
-#### `POST /api/sessions/{session_id}/end`
-End session and cleanup resources.
+**Student Interaction**
+- `POST /api/answers/submit` - Submit answer and calculate score
+- `GET /api/sessions/{session_id}/leaderboard` - Get current rankings
 
-### Question Generation
+**Health & Monitoring**
+- `GET /health` - Health check endpoint
+- `GET /docs` - Swagger UI documentation
+- `GET /redoc` - ReDoc alternative documentation
 
-#### `POST /api/questions/generate`
-Generate questions from lecture content using Gemini AI.
-```json
-Request: {
-  "session_id": "abc-123",
-  "content": "Lecture transcript...",
-  "count": 5
-}
-Response: {
-  "questions": [
-    {
-      "id": "q1",
-      "text": "What is the main topic?",
-      "options": ["A", "B", "C", "D"],
-      "correct": 0,
-      "explanation": "The correct answer is A because..."
-    }
-  ]
-}
-```
+**Scoring Formula:** `score = 100 × (1 - time_taken/duration)` if correct, 0 if incorrect
 
-#### `POST /api/questions/publish`
-Publish question to all connected students.
-```json
-Request: {
-  "session_id": "abc-123",
-  "question_id": "q1",
-  "duration": 30
-}
-```
+## WebSocket Communication
 
-### Answer Submission
-
-#### `POST /api/answers/submit`
-Submit student answer and calculate score.
-```json
-Request: {
-  "student_id": "stu-456",
-  "question_id": "q1",
-  "answer": 0,
-  "time_taken": 15.3
-}
-Response: {
-  "correct": true,
-  "score": 100,
-  "total_score": 300
-}
-```
-
-#### `GET /api/sessions/{session_id}/results`
-Get aggregated results for current question.
-
-### Leaderboard
-
-#### `GET /api/sessions/{session_id}/leaderboard`
-Real-time leaderboard with student rankings.
-```json
-Response: {
-  "leaderboard": [
-    { "rank": 1, "name": "Alice", "score": 450 },
-    { "rank": 2, "name": "Bob", "score": 380 }
-  ]
-}
-```
-
-## 🔄 WebSocket Events
-
-### Lecturer Connection
+### Lecturer WebSocket
 ```
 ws://localhost:8080/ws/lecturer/{session_id}
 ```
 
-**Receives:**
-- `student-joined` - New student joined
-- `answer-submitted` - Student submitted answer
-- `all-answered` - All students have answered
+**Receives (from server):**
+- `student-joined` - `{ type: "student-joined", student: {...} }`
+- `answer-submitted` - `{ type: "answer-submitted", student_id, answer }`
+- `all-answered` - `{ type: "all-answered", count }`
 
-**Sends:**
-- `publish-question` - Send question to students
-- `end-question` - Stop accepting answers
-- `end-session` - Close the session
+**Sends (to server):**
+- `publish-question` - `{ type: "publish-question", question_id, duration }`
+- `end-question` - `{ type: "end-question", question_id }`
+- `end-session` - `{ type: "end-session" }`
 
-### Student Connection
+### Student WebSocket
 ```
-ws://localhost:8080/ws/student/{session_id}
+ws://localhost:8080/ws/student/{session_id}/{student_id}
 ```
 
-**Receives:**
-- `question-published` - New question available
-- `question-ended` - Time's up or manually ended
-- `leaderboard-update` - Score changes
-- `session-ended` - Quiz complete
+**Receives (from server):**
+- `question-published` - `{ type: "question-published", question: {...}, duration }`
+- `question-ended` - `{ type: "question-ended", question_id, results }`
+- `leaderboard-update` - `{ type: "leaderboard-update", leaderboard: [...] }`
+- `session-ended` - `{ type: "session-ended" }`
 
-**Sends:**
-- `submit-answer` - Send answer to server
-- `ping` - Keep connection alive
+**Sends (to server):**
+- `submit-answer` - `{ type: "submit-answer", question_id, answer, time_taken }`
+- `ping` - Keepalive message
 
-## 🗄️ Database Schema (Firestore)
+## Database Schema
 
-### Collections
+### Firestore Collections
 
 #### `sessions`
 ```javascript
 {
-  id: "session-123",
-  code: "842956",
+  id: "session-abc123",
+  code: "842956",              // 6-digit join code
   lecturer_id: "prof-456",
-  status: "active|ended",
-  created_at: timestamp,
+  course_name: "Introduction to AI",
+  status: "active" | "ended",
+  created_at: Timestamp,
   student_count: 25,
   current_question: "q3"
 }
@@ -194,14 +147,17 @@ ws://localhost:8080/ws/student/{session_id}
 ```javascript
 {
   id: "q1",
-  session_id: "session-123",
-  text: "Question text",
-  options: ["A", "B", "C", "D"],
-  correct: 0,
-  published_at: timestamp,
+  session_id: "session-abc123",
+  text: "What is machine learning?",
+  options: ["A subset of AI", "A language", "A database", "An OS"],
+  correct: 0,                  // Index of correct answer
+  explanation: "ML is a subset of AI...",
+  published_at: Timestamp,
+  duration: 30,                // Seconds
   stats: {
     total_answers: 20,
-    correct_answers: 15
+    correct_answers: 15,
+    answer_distribution: [15, 3, 1, 1]
   }
 }
 ```
@@ -210,123 +166,247 @@ ws://localhost:8080/ws/student/{session_id}
 ```javascript
 {
   id: "student-789",
-  session_id: "session-123",
+  session_id: "session-abc123",
   name: "John Doe",
   score: 350,
+  joined_at: Timestamp,
   answers: [
-    { question_id: "q1", answer: 0, correct: true }
+    {
+      question_id: "q1",
+      answer: 0,
+      correct: true,
+      score: 85,
+      time_taken: 15.3
+    }
   ]
 }
 ```
 
-## 🤖 AI Integration
+### Firestore Security Rules
 
-### Gemini API Configuration
+```javascript
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Sessions: public read for joining, authenticated write
+    match /sessions/{session} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+
+    // Questions: read only for session participants
+    match /questions/{question} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+
+    // Students: own data only
+    match /students/{student} {
+      allow read: if true;
+      allow create: if true;
+      allow update: if request.auth != null || resource.id == request.resource.id;
+    }
+  }
+}
+```
+
+## AI Integration
+
+### Gemini Configuration
+
 ```python
 # app/services/gemini.py
-GEMINI_MODEL = "gemini-1.5-flash"
+MODEL = "gemini-1.5-flash"
 GENERATION_CONFIG = {
-    "temperature": 0.7,
-    "max_output_tokens": 2048,
+    "temperature": 0.7,          # Creativity level
+    "max_output_tokens": 2048,   # Response length
+    "top_p": 0.95,
+    "top_k": 40
 }
 ```
 
 ### Question Generation Prompt
+
+The system uses structured prompting to generate consistent quiz questions:
+
 ```python
 prompt = f"""
-Generate {count} multiple choice questions from this content:
+Generate {count} multiple choice questions based on this lecture content:
+
 {content}
 
-Format as JSON:
+Requirements:
+- 4 answer options per question (A, B, C, D)
+- Exactly one correct answer
+- Clear, concise explanations
+- Difficulty: appropriate for university students
+- Format: JSON
+
+Return JSON in this exact format:
 {{
   "questions": [
     {{
-      "text": "question",
-      "options": ["A", "B", "C", "D"],
+      "text": "Question text here?",
+      "options": ["Option A", "Option B", "Option C", "Option D"],
       "correct": 0,
-      "explanation": "why this is correct"
+      "explanation": "Explanation of why this is correct"
     }}
   ]
 }}
 """
 ```
 
-## 🔐 Authentication & Security
+## Performance & Optimization
 
-### Google Cloud Authentication
-```bash
-# Local development
-gcloud auth application-default login
+### Connection Management
+- **Firestore:** Single client instance reused across requests
+- **WebSocket:** Automatic cleanup on disconnect, heartbeat monitoring
+- **Gemini API:** Request pooling with retry logic
 
-# Docker/Production
-# Uses mounted credentials or service account
+### Caching Strategy
+- Generated questions cached in Firestore (no in-memory cache currently)
+- Session data retrieved once per WebSocket connection
+- Leaderboard computed on-demand (future: cache for 5 seconds)
+
+## Error Handling
+
+### HTTP Status Codes
+- `200` - Success
+- `400` - Bad Request (invalid input)
+- `404` - Not Found (session/question doesn't exist)
+- `409` - Conflict (duplicate submission)
+- `500` - Internal Server Error (logged to Cloud Logging)
+
+### Logging
+Structured JSON logs to stdout for Cloud Run:
+```python
+logger.info("Session created", extra={
+    "session_id": session_id,
+    "lecturer_id": lecturer_id,
+    "code": code
+})
 ```
 
-### Environment Variables
-```env
-GOOGLE_CLOUD_PROJECT=your-project-id
-GEMINI_API_KEY=your-api-key  # From Google Cloud Secrets
-GOOGLE_APPLICATION_CREDENTIALS=/path/to/credentials.json
-```
+## Testing
 
-### Firestore Security Rules
-```javascript
-// firestore.rules
-match /sessions/{session} {
-  allow read: if true;  // Public read for joining
-  allow write: if request.auth != null;  // Authenticated writes
-}
-```
+### Run Tests
 
-## 🐳 Docker Deployment
-
-```dockerfile
-FROM python:3.11-slim
-WORKDIR /usr/src/app
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
-COPY app ./app
-EXPOSE 8080
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8080"]
-```
-
-## 🧪 Testing
+Ensure you're in the `backend/` directory with the virtual environment activated:
 
 ```bash
-# Run unit tests
-pytest tests/
+# Activate virtual environment
+source venv/bin/activate
 
-# Test coverage
-pytest --cov=app tests/
+# Install test dependencies
+pip install -r requirements.txt
 
-# Load testing with locust
-locust -f tests/load_test.py --host=http://localhost:8080
+# Run all tests
+pytest
+
+# Run with coverage report
+pytest --cov=app --cov-report=html
+
+# Run specific test file
+pytest tests/test_api_sessions.py -v
+
+# Run only unit tests
+pytest -m unit
+
+# Run with verbose output
+pytest -vv
 ```
 
-## 📊 Performance Considerations
+Coverage reports are generated in `htmlcov/` - open `htmlcov/index.html` in a browser.
 
-- **Connection Pooling:** Firestore client reused across requests
-- **Async Operations:** All I/O operations are async
-- **WebSocket Management:** Automatic cleanup on disconnect
-- **Rate Limiting:** 100 requests/minute per IP
-- **Question Caching:** Generated questions cached for 1 hour
+### Test Structure
 
-## 🚦 Error Handling
+```
+tests/
+├── conftest.py              # Shared fixtures and test configuration
+├── test_api_sessions.py     # API endpoint tests (sessions, questions, answers, leaderboard)
+├── test_services.py         # Service layer tests (Firestore, Gemini AI, analytics)
+├── test_websockets.py       # WebSocket connection and messaging tests
+└── legacy/                  # Old manual test scripts (archived)
+    ├── test_firestore.py
+    ├── test_mvp_flow.py
+    └── test_websocket.py
+```
 
-- **400:** Invalid request data
-- **404:** Session/resource not found
-- **409:** Duplicate submission
-- **429:** Rate limit exceeded
-- **500:** Server error (logged to Cloud Logging)
+### Test Coverage
 
-## 🔍 Monitoring
+The test suite covers:
+- ✅ Session creation and data validation (Pydantic schemas)
+- ✅ Question generation logic and structure validation
+- ✅ Answer submission and scoring algorithms
+- ✅ Leaderboard calculations and ranking
+- ✅ WebSocket connection management and messaging
+- ✅ Firestore operations (mocked)
+- ✅ Analytics calculations and metrics
+- ✅ Error handling and edge cases
 
-- **Health Check:** `GET /health`
-- **Metrics:** `GET /metrics` (Prometheus format)
-- **Logging:** Structured JSON logs to stdout
-- **Tracing:** OpenTelemetry integration
+**Note:** Tests use mocked dependencies (Firestore, Gemini API) to ensure fast, reliable execution without external service calls.
 
----
+### Writing New Tests
 
-📚 For frontend integration details, see [frontend README](../frontend/README.md)  
-🔧 For deployment and infrastructure, see [main README](../README.md)
+Tests use pytest with mocked dependencies (Firestore, Gemini API). Example:
+
+```python
+@pytest.mark.unit
+def test_example(sample_session_data):
+    """Test data validation logic"""
+    from app.schemas import SessionCreate
+
+    session = SessionCreate(**sample_session_data)
+    assert session.lecturer_name is not None
+```
+
+Available fixtures in `tests/conftest.py`:
+- `client` - FastAPI TestClient (health check endpoint only)
+- `mock_firestore_client` - Mocked Firestore database
+- `mock_session_manager` - Mocked WebSocket manager
+- `mock_analytics_service` - Mocked analytics service
+- `sample_session_data` - Sample session creation data
+- `sample_question_data` - Sample question structure
+
+**Legacy Tests:** Manual integration tests are in `tests/legacy/` and excluded from automated runs.
+
+## Linting
+
+**Tool:** Black (opinionated Python code formatter)
+
+**Configuration:** Command-line arguments (`--line-length=120`)
+
+```bash
+# Check formatting without making changes
+black --check --line-length=120 app
+
+# Auto-format all files
+black --line-length=120 app
+```
+
+**Formatting Rules:**
+- Line length: 120 characters
+- Target: Python 3.11+
+- Double quotes for strings
+- Consistent indentation and spacing
+
+**CI Integration:** Black formatting check runs automatically on every PR via GitHub Actions. See `.github/workflows/pr-checks.yml`
+
+**Note:** Black auto-fixes formatting issues. Run `black app` locally before committing to ensure CI passes.
+
+## Deployment
+
+### Docker Build
+```bash
+docker build -t qwiz-backend .
+docker run -p 8080:8080 --env-file .env qwiz-backend
+```
+
+### Google Cloud Run
+See [main README](../README.md#deployment-to-the-production-environment) for Cloud Run deployment instructions.
+
+## Related Documentation
+
+- **[Local Setup Guide](../LOCAL_SETUP.md)** - Complete development environment setup
+- **[Main README](../README.md)** - Project overview and deployment
+- **[Frontend README](../frontend/README.md)** - Frontend integration details
