@@ -179,7 +179,7 @@ export default function HomePage() {
                 Create Session
               </Link>
             </Button>
-            <Button variant="secondary" asChild className="border-white text-white hover:bg-white hover:text-indigo-600 text-base px-8 py-3">
+            <Button asChild className="bg-white text-indigo-600 hover:bg-gray-50 text-base px-8 py-3">
               <Link href="/student">
                 Join Session
               </Link>

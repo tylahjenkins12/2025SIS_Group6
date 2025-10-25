@@ -109,6 +109,7 @@ export default function LecturerStartPage() {
                     onChange={(e) => setSessionConfig(prev => ({ ...prev, answerTimeSeconds: parseInt(e.target.value) }))}
                     className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   >
+                    <option value={15}>15 seconds</option>
                     <option value={30}>30 seconds</option>
                     <option value={45}>45 seconds</option>
                     <option value={60}>1 minute</option>
@@ -124,6 +125,7 @@ export default function LecturerStartPage() {
                     onChange={(e) => setSessionConfig(prev => ({ ...prev, transcriptionIntervalMinutes: parseFloat(e.target.value) }))}
                     className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   >
+                    <option value={0.5}>30 seconds (testing)</option>
                     <option value={5}>5 minutes</option>
                     <option value={7}>7 minutes</option>
                     <option value={9}>9 minutes</option>
