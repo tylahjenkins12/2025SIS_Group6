@@ -274,7 +274,7 @@ export default function StudentPlayPage() {
       sessionStorage.removeItem("mvp_code");
       sessionStorage.removeItem("mvp_name");
     } catch {}
-    router.push("/student");
+    router.push("/");
   }
 
   if (!code)
@@ -361,7 +361,7 @@ export default function StudentPlayPage() {
 
           {/* Leave Button */}
           <div className="mt-6 text-center">
-            <Button onClick={() => setShowLeaveConfirm(true)} variant="primary">
+            <Button onClick={handleLeaveConfirm} variant="primary">
               Return to Home
             </Button>
           </div>

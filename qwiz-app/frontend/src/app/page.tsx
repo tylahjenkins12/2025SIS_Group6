@@ -144,21 +144,17 @@ export default function HomePage() {
             </p>
           </div>
 
-          {/* Video placeholder - replace with actual video component when ready */}
+          {/* Demo Video */}
           <div className="relative aspect-video bg-slate-200 rounded-2xl overflow-hidden shadow-2xl">
-            <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-indigo-500 to-purple-600">
-              <div className="text-center text-white">
-                <div className="w-20 h-20 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-4 backdrop-blur">
-                  <svg className="w-8 h-8" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M8 5v14l11-7z"/>
-                  </svg>
-                </div>
-                <h3 className="text-xl font-semibold mb-2">Demo Video Coming Soon</h3>
-                <p className="text-indigo-100">
-                  See how Qwiz transforms lectures into interactive experiences
-                </p>
-              </div>
-            </div>
+            <video
+              className="w-full h-full object-cover"
+              controls
+              poster="/demo-poster.jpg"
+            >
+              <source src="/demo.mp4" type="video/mp4" />
+              <source src="/demo.webm" type="video/webm" />
+              Your browser does not support the video tag.
+            </video>
           </div>
 
           <div className="mt-8 text-center">
