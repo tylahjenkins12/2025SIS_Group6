@@ -127,7 +127,7 @@ gcloud run deploy qwiz-backend \
 ### Deploy Frontend
 ```bash
 cd frontend
-gcloud run deploy qwiz-frontend \
+gcloud run deploy qwiz-app \
   --source . \
   --platform managed \
   --region us-central1 \
