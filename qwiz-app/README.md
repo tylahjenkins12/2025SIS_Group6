@@ -121,8 +121,11 @@ gcloud run deploy qwiz-backend \
   --platform managed \
   --region us-central1 \
   --allow-unauthenticated \
-  --set-secrets=GEMINI_API_KEY=GEMINI_API_KEY:latest
+  --set-secrets=GEMINI_API_KEY=GEMINI_API_KEY:latest \
+  --set-env-vars GOOGLE_CLOUD_PROJECT=software-innovation-studio-6,ALLOWED_ORIGINS=https://qwiz-app-303494497673.us-central1.run.app
 ```
+
+Note: Update `ALLOWED_ORIGINS` if your frontend URL is different.
 
 ### Deploy Frontend
 ```bash
@@ -132,11 +135,13 @@ gcloud run deploy qwiz-app \
   --platform managed \
   --region us-central1 \
   --allow-unauthenticated \
-  --port 3000 \
-  --set-env-vars NEXT_PUBLIC_BACKEND_URL=<BACKEND_URL>
+  --port 3000
 ```
 
-Replace `<BACKEND_URL>` with the backend URL from the previous step.
+**Note:** The frontend gets its backend URL from `frontend/.env.production` at build time. Ensure this file exists with:
+```
+NEXT_PUBLIC_BACKEND_URL=https://qwiz-backend-303494497673.us-central1.run.app
+```
 
 
 
